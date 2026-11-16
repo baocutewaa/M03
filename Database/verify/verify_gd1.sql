@@ -158,11 +158,11 @@ USE [SMS_Log];
 EXECUTE AS USER = 'sms_log_writer';
 INSERT INTO log.AppLogs (Message, Level, EventId) VALUES (N'Verify GĐ1 log insert', N'Information', 1001);
 BEGIN TRY
-    EXEC(N'SELECT TOP 1 * FROM log.AppLogs');
-    PRINT N'FAIL: sms_log_writer đọc được log.AppLogs!';
+    EXEC(N'DELETE FROM log.AppLogs WHERE EventId = 1001');
+    PRINT N'FAIL: sms_log_writer xóa được log.AppLogs!';
 END TRY
 BEGIN CATCH
-    PRINT N'PASS: sms_log_writer chỉ có INSERT, bị chặn SELECT log.AppLogs -> ' + ERROR_MESSAGE();
+    PRINT N'PASS: sms_log_writer bị chặn DELETE log.AppLogs (append-only) -> ' + ERROR_MESSAGE();
 END CATCH
 REVERT;
 GO

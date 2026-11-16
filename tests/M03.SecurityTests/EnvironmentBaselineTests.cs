@@ -6,28 +6,30 @@ using Microsoft.Extensions.Configuration;
 
 namespace M03.SecurityTests;
 
+[Collection("WebApp")]
 public sealed class EnvironmentBaselineTests
 {
     [Fact]
-    public async Task WebApp_StartsAndServesHomePage_WhenConnectionStringConfigured()
+    public async Task WebApp_StartsAndServesLoginAndHealth_WhenConnectionStringConfigured()
     {
         await using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Development");
-                builder.ConfigureAppConfiguration((_, config) =>
-                {
-                    config.AddInMemoryCollection(new Dictionary<string, string?>
-                    {
-                        ["ConnectionStrings:SmsApp"] = "Server=.;Database=SMS;Integrated Security=True;TrustServerCertificate=True;"
-                    });
-                });
             });
 
-        using var client = factory.CreateClient();
-        var response = await client.GetAsync("/");
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = false
+        });
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var loginResponse = await client.GetAsync("/Account/Login");
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+
+        var homeResponse = await client.GetAsync("/");
+        Assert.Equal(HttpStatusCode.Redirect, homeResponse.StatusCode);
+        Assert.Contains("/Account/Login", homeResponse.Headers.Location?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -1,8 +1,24 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Trang chủ";
+    var permissions = User.Claims.Where(c => c.Type == "perm").Select(c => c.Value).OrderBy(v => v).ToList();
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="mt-3">
+    <h2>Hệ thống Quản lý Sinh viên &amp; Quá trình theo học (SMS)</h2>
+    <p class="text-muted">Xin chào <strong>@User.Identity?.Name</strong>.</p>
+
+    @if (TempData["StatusMessage"] is string msg)
+    {
+        <div class="alert alert-success">@msg</div>
+    }
+
+    <div class="card mt-3">
+        <div class="card-header">Quyền được cấp từ CSDL (@permissions.Count)</div>
+        <div class="card-body">
+            @foreach (var perm in permissions)
+            {
+                <span class="badge bg-secondary me-1 mb-1">@perm</span>
+            }
+        </div>
+    </div>
 </div>

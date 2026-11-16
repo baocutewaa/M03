@@ -1,0 +1,48 @@
+@model M03_Opus.Models.Account.EnableAuthenticatorViewModel
+@{
+    ViewData["Title"] = "Thiết lập xác thực 2 lớp (TOTP)";
+}
+
+<div class="row justify-content-center mt-4">
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Thiết lập xác thực 2 lớp (TOTP)</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.IsTwoFactorEnabled)
+                {
+                    <div class="alert alert-success">Tài khoản của bạn đã bật xác thực 2 lớp (2FA).</div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        Tài khoản quản trị (Administrator) bắt buộc phải kích hoạt TOTP 2FA trước khi sử dụng hệ thống.
+                    </div>
+                }
+
+                <p>Nhập khóa bí mật sau vào ứng dụng Authenticator (Microsoft / Google Authenticator):</p>
+                <div class="p-3 bg-light border rounded mb-3">
+                    <code class="fs-5">@Model.SharedKey</code>
+                </div>
+                <p class="small text-muted">URI cấu hình: <code>@Model.ProvisioningOtpAuth</code></p>
+
+                <form asp-action="EnableAuthenticator" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Code" class="form-label"></label>
+                        <input asp-for="Code" class="form-control" autocomplete="one-time-code" />
+                        <span asp-validation-for="Code" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Xác nhận và kích hoạt 2FA</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

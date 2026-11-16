@@ -13,3 +13,10 @@ dotnet_diagnostic.EF1002.severity = error
 # Tên project M03_Opus có dấu gạch dưới theo tên repo hiện có; Controller/Program cần public
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1515.severity = none
+# ASP.NET Core không có SynchronizationContext; MVC returnUrl sử dụng string theo Url.IsLocalUrl
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1054.severity = none
+dotnet_diagnostic.CA1056.severity = none
+
+[Data/Migrations/**/*.cs]
+generated_code = true

@@ -38,13 +38,16 @@ GO
 GRANT EXECUTE ON SCHEMA::app                 TO [SMS_AppRole];
 GRANT SELECT  ON SCHEMA::app                 TO [SMS_AppRole];
 GRANT SELECT  ON SCHEMA::rpt                 TO [SMS_AppRole];
-GRANT SELECT, INSERT, UPDATE ON SCHEMA::auth TO [SMS_AppRole];
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::auth TO [SMS_AppRole];
 GRANT EXECUTE ON OBJECT::auth.usp_GetUserPermissions TO [SMS_AppRole];
+GRANT EXECUTE ON OBJECT::auth.usp_GetUserContext     TO [SMS_AppRole];
+GRANT EXECUTE ON OBJECT::auth.usp_LinkUserProfile    TO [SMS_AppRole];
 GRANT SELECT  ON SCHEMA::sec                 TO [SMS_AppRole];
 GRANT SELECT, INSERT ON OBJECT::audit.ActivityLog TO [SMS_AppRole];
 DENY  SELECT, INSERT, UPDATE, DELETE, ALTER ON SCHEMA::edu TO [SMS_AppRole];
 DENY  UPDATE, DELETE ON SCHEMA::audit        TO [SMS_AppRole];
-DENY  DELETE ON SCHEMA::auth                 TO [SMS_AppRole];
+DENY  DELETE ON OBJECT::auth.PasswordHistory TO [SMS_AppRole];
+DENY  DELETE ON OBJECT::auth.LoginHistory    TO [SMS_AppRole];
 DENY  ALTER ANY SCHEMA                       TO [SMS_AppRole];
 GO
 
@@ -73,10 +76,10 @@ DENY  SELECT ON SCHEMA::sec   TO [SMS_LabRole];
 GO
 
 -- ----------------------------------------------------------------------------
--- Database SMS_Log: sms_log_writer chỉ có INSERT trên log.AppLogs
+-- Database SMS_Log: sms_log_writer chỉ có INSERT, SELECT (cho SqlBulkCopy Serilog), cấm UPDATE/DELETE
 -- ----------------------------------------------------------------------------
 USE [SMS_Log];
 GO
-GRANT INSERT ON OBJECT::log.AppLogs TO [SMS_LogWriter];
-DENY  SELECT, UPDATE, DELETE ON OBJECT::log.AppLogs TO [SMS_LogWriter];
+GRANT INSERT, SELECT ON OBJECT::log.AppLogs TO [SMS_LogWriter];
+DENY  UPDATE, DELETE ON OBJECT::log.AppLogs TO [SMS_LogWriter];
 GO

@@ -822,7 +822,7 @@ GO
 -- 14. Lấy danh sách Permission của user (Tình huống 16)
 -- ----------------------------------------------------------------------------
 CREATE OR ALTER PROCEDURE auth.usp_GetUserPermissions
-    @RoleNames NVARCHAR(MAX) -- CSV hoặc JSON danh sách vai trò
+    @RoleNames NVARCHAR(MAX) -- CSV danh sách vai trò
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -831,5 +831,66 @@ BEGIN
     FROM auth.RolePermissions rp
     JOIN auth.Permissions p ON p.PermissionId = rp.PermissionId
     WHERE rp.RoleName IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@RoleNames, N','));
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 15. Lấy ngữ cảnh người dùng khi đăng nhập (StudentId, LecturerId, FacultyIds)
+-- Chạy dưới ownership chaining của dbo trước khi SESSION_CONTEXT được thiết lập.
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE auth.usp_GetUserContext
+    @UserId NVARCHAR(450)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @StudentId INT = (SELECT TOP 1 StudentId FROM edu.Students WHERE UserId = @UserId AND IsDeleted = 0);
+    DECLARE @LecturerId INT = (SELECT TOP 1 LecturerId FROM edu.Lecturers WHERE UserId = @UserId AND IsActive = 1);
+    DECLARE @FacultyIds NVARCHAR(200) = (
+        SELECT STRING_AGG(CAST(FacultyId AS NVARCHAR(20)), N',')
+        FROM sec.UserFacultyScope
+        WHERE UserId = @UserId
+    );
+
+    SELECT
+        @StudentId  AS StudentId,
+        @LecturerId AS LecturerId,
+        @FacultyIds AS FacultyIds;
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 16. Liên kết UserId Identity với hồ sơ SV/GV và phạm vi khoa khi seed/kích hoạt
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE auth.usp_LinkUserProfile
+    @UserId       NVARCHAR(450),
+    @StudentCode  VARCHAR(20) = NULL,
+    @LecturerCode VARCHAR(20) = NULL,
+    @FacultyCode  VARCHAR(20) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @StudentCode IS NOT NULL
+    BEGIN
+        UPDATE edu.Students SET UserId = @UserId
+        WHERE StudentCode = @StudentCode AND UserId IS NULL AND IsDeleted = 0;
+    END
+
+    IF @LecturerCode IS NOT NULL
+    BEGIN
+        UPDATE edu.Lecturers SET UserId = @UserId
+        WHERE Code = @LecturerCode AND UserId IS NULL;
+    END
+
+    IF @FacultyCode IS NOT NULL
+    BEGIN
+        DECLARE @FacultyId INT = (SELECT FacultyId FROM edu.Faculties WHERE Code = @FacultyCode);
+        IF @FacultyId IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM sec.UserFacultyScope WHERE UserId = @UserId AND FacultyId = @FacultyId)
+        BEGIN
+            INSERT INTO sec.UserFacultyScope (UserId, FacultyId) VALUES (@UserId, @FacultyId);
+        END
+    END
 END
 GO

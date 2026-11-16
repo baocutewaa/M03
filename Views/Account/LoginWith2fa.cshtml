@@ -1,0 +1,33 @@
+@model M03_Opus.Models.Account.LoginWith2faInput
+@{
+    ViewData["Title"] = "Xác thực 2 lớp (TOTP)";
+}
+
+<div class="row justify-content-center mt-4">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Xác thực 2 lớp</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Nhập mã 6 chữ số từ ứng dụng xác thực (Authenticator).</p>
+                <form asp-action="LoginWith2fa" method="post">
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="TwoFactorCode" class="form-label"></label>
+                        <input asp-for="TwoFactorCode" class="form-control" autocomplete="one-time-code" />
+                        <span asp-validation-for="TwoFactorCode" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Xác nhận</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
