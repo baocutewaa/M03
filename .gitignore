@@ -1,0 +1,45 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+publish/
+artifacts/
+
+# Visual Studio & Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# Test Results
+[Tt]est[Rr]esult*/
+coverage*/
+*.trx
+*.coverage
+
+# Secrets, Certificates, Keys (Security - Scenario 13 & 25)
+secrets.json
+appsettings.*.local.json
+appsettings.Local.json
+*.pfx
+*.pvk
+*.cer
+*.key
+*.pem
+*.crt
+
+# SQL Backups & Audit logs (Scenario 5, 6, 7)
+*.bak
+*.trn
+*.sqlaudit
+*.mdf
+*.ldf
+*.ndf
+
+# Local uploads & runtime data
+SmsData/
+uploads/

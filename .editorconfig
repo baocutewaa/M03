@@ -1,0 +1,15 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+charset = utf-8
+
+# Tình huống 10 & 25: Toàn bộ cảnh báo bảo mật (CA2100, CA3xxx, CA5xxx, EF1002) nâng lên mức lỗi biên dịch
+dotnet_analyzer_diagnostic.category-Security.severity = error
+dotnet_diagnostic.CA2100.severity = error
+dotnet_diagnostic.EF1002.severity = error
+
+# Tên project M03_Opus có dấu gạch dưới theo tên repo hiện có; Controller/Program cần public
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1515.severity = none

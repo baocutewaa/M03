@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/M03.SecurityTests/M03.SecurityTests.csproj" />
+  </Folder>
+  <Project Path="M03_Opus.csproj" />
+</Solution>
