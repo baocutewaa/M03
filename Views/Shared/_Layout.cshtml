@@ -36,6 +36,12 @@
                                     <a class="nav-link text-dark" asp-area="Academic" asp-controller="Students" asp-action="Index">Sinh viên</a>
                                 </li>
                             }
+                            @if (User.HasClaim("perm", "Catalog.Manage") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Catalog" asp-action="Index">Danh mục</a>
+                                </li>
+                            }
                             @if (User.HasClaim("perm", "Section.ViewOwn"))
                             {
                                 <li class="nav-item">

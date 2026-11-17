@@ -1,0 +1,102 @@
+@model StudentListPageViewModel
+@{
+    ViewData["Title"] = "Danh sách sinh viên";
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+    <h3>Quản lý hồ sơ sinh viên</h3>
+    @if (User.HasClaim("perm", "Student.Create"))
+    {
+        <a asp-action="Create" class="btn btn-primary">Thêm sinh viên</a>
+    }
+</div>
+
+@if (TempData["StatusMessage"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+
+<form method="get" asp-action="Index" class="card card-body mb-3">
+    <div class="row g-2">
+        <div class="col-md-3">
+            <input name="Keyword" value="@Model.Query.Keyword" class="form-control form-control-sm" placeholder="MSSV hoặc họ tên..." />
+        </div>
+        <div class="col-md-2">
+            <select name="FacultyId" class="form-select form-select-sm">
+                <option value="">-- Tất cả khoa --</option>
+                @foreach (var f in Model.Faculties)
+                {
+                    <option value="@f.FacultyId" selected="@(Model.Query.FacultyId == f.FacultyId)">@f.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="MajorId" class="form-select form-select-sm">
+                <option value="">-- Tất cả ngành --</option>
+                @foreach (var m in Model.Majors)
+                {
+                    <option value="@m.MajorId" selected="@(Model.Query.MajorId == m.MajorId)">@m.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="CohortId" class="form-select form-select-sm">
+                <option value="">-- Tất cả khóa --</option>
+                @foreach (var c in Model.Cohorts)
+                {
+                    <option value="@c.CohortId" selected="@(Model.Query.CohortId == c.CohortId)">@c.Code</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="Sort" class="form-select form-select-sm">
+                <option value="code" selected="@(Model.Query.Sort == "code")">Sắp xếp: MSSV</option>
+                <option value="name" selected="@(Model.Query.Sort == "name")">Sắp xếp: Họ tên</option>
+                <option value="admitted" selected="@(Model.Query.Sort == "admitted")">Sắp xếp: Ngày nhập học</option>
+                <option value="gpa" selected="@(Model.Query.Sort == "gpa")">Sắp xếp: GPA</option>
+            </select>
+        </div>
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-sm btn-secondary w-100">Lọc</button>
+        </div>
+    </div>
+</form>
+
+<p class="text-muted small">Tìm thấy <strong>@Model.TotalCount</strong> sinh viên (trang @Model.EffectivePage / @Math.Max(1, Model.TotalPages), tối đa @Model.EffectivePageSize dòng/trang).</p>
+
+<table class="table table-bordered table-hover table-sm">
+    <thead class="table-light">
+        <tr>
+            <th>MSSV</th>
+            <th>Họ và tên</th>
+            <th>Khoa</th>
+            <th>Ngành</th>
+            <th>Lớp</th>
+            <th>GPA</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var s in Model.Items)
+        {
+            <tr>
+                <td>@s.StudentCode</td>
+                <td>@s.FullName</td>
+                <td>@s.FacultyName</td>
+                <td>@s.MajorName</td>
+                <td>@s.ClassCode</td>
+                <td>@s.CumulativeGpa.ToString("0.00")</td>
+                <td>@s.Status.ToDisplayText()</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@s.PublicId" class="btn btn-xs btn-outline-primary btn-sm">Chi tiết</a>
+                    @if (User.HasClaim("perm", "Student.Edit"))
+                    {
+                        <a asp-action="Edit" asp-route-id="@s.PublicId" class="btn btn-xs btn-outline-secondary btn-sm">Sửa</a>
+                    }
+                    <a asp-action="History" asp-route-id="@s.PublicId" class="btn btn-xs btn-outline-info btn-sm">Lịch sử</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,186 @@
+@model CatalogIndexViewModel
+@{
+    ViewData["Title"] = "Danh mục đào tạo";
+}
+
+<h3 class="mt-3 mb-3">Quản lý danh mục đào tạo (có Cache 10 phút)</h3>
+
+@if (TempData["StatusMessage"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Khoa (@Model.Faculties.Count)</div>
+            <div class="card-body">
+                <form asp-action="SaveFaculty" method="post" class="row g-2 mb-3">
+                    <div class="col-4"><input name="Code" class="form-control form-control-sm" placeholder="Mã khoa" required /></div>
+                    <div class="col-6"><input name="Name" class="form-control form-control-sm" placeholder="Tên khoa" required /></div>
+                    <div class="col-2"><button type="submit" class="btn btn-sm btn-primary w-100">Lưu</button></div>
+                </form>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead><tr><th>Mã</th><th>Tên khoa</th><th>Trạng thái</th></tr></thead>
+                    <tbody>
+                        @foreach (var f in Model.Faculties)
+                        {
+                            <tr><td>@f.Code</td><td>@f.Name</td><td>@(f.IsActive ? "Hoạt động" : "Ngưng")</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Ngành đào tạo (@Model.Majors.Count)</div>
+            <div class="card-body">
+                <form asp-action="SaveMajor" method="post" class="row g-2 mb-3">
+                    <div class="col-3">
+                        <select name="FacultyId" class="form-select form-select-sm" required>
+                            @foreach (var f in Model.Faculties)
+                            {
+                                <option value="@f.FacultyId">@f.Code</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-3"><input name="Code" class="form-control form-control-sm" placeholder="Mã ngành" required /></div>
+                    <div class="col-4"><input name="Name" class="form-control form-control-sm" placeholder="Tên ngành" required /></div>
+                    <div class="col-2"><button type="submit" class="btn btn-sm btn-primary w-100">Lưu</button></div>
+                </form>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead><tr><th>Khoa</th><th>Mã</th><th>Tên ngành</th></tr></thead>
+                    <tbody>
+                        @foreach (var m in Model.Majors)
+                        {
+                            <tr><td>@m.FacultyName</td><td>@m.Code</td><td>@m.Name</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Khóa &amp; Lớp sinh hoạt</div>
+            <div class="card-body">
+                <form asp-action="SaveCohort" method="post" class="row g-2 mb-2">
+                    <div class="col-5"><input name="Code" class="form-control form-control-sm" placeholder="Mã khóa (vd: K2026)" required /></div>
+                    <div class="col-4"><input name="StartYear" type="number" class="form-control form-control-sm" value="2026" required /></div>
+                    <div class="col-3"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Thêm khóa</button></div>
+                </form>
+                <form asp-action="SaveClass" method="post" class="row g-2 mb-3">
+                    <div class="col-3"><input name="Code" class="form-control form-control-sm" placeholder="Mã lớp" required /></div>
+                    <div class="col-3">
+                        <select name="MajorId" class="form-select form-select-sm">
+                            @foreach (var m in Model.Majors) { <option value="@m.MajorId">@m.Code</option> }
+                        </select>
+                    </div>
+                    <div class="col-3">
+                        <select name="CohortId" class="form-select form-select-sm">
+                            @foreach (var c in Model.Cohorts) { <option value="@c.CohortId">@c.Code</option> }
+                        </select>
+                    </div>
+                    <div class="col-3"><button type="submit" class="btn btn-sm btn-primary w-100">Thêm lớp</button></div>
+                </form>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead><tr><th>Lớp</th><th>Ngành</th><th>Khóa</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in Model.Classes)
+                        {
+                            <tr><td>@c.Code</td><td>@c.MajorName</td><td>@c.CohortCode</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Học kỳ (@Model.Semesters.Count)</div>
+            <div class="card-body">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead><tr><th>Mã</th><th>Tên</th><th>Thời gian</th><th>Hiện hành</th></tr></thead>
+                    <tbody>
+                        @foreach (var s in Model.Semesters)
+                        {
+                            <tr>
+                                <td>@s.Code</td>
+                                <td>@s.Name</td>
+                                <td>@s.StartDate.ToString("yyyy-MM-dd") - @s.EndDate.ToString("yyyy-MM-dd")</td>
+                                <td>@(s.IsCurrent ? "Hiện hành" : "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Môn học &amp; Tiên quyết (@Model.Courses.Count)</div>
+            <div class="card-body">
+                <form asp-action="SaveCourse" method="post" class="row g-2 mb-3">
+                    <div class="col-3"><input name="Code" class="form-control form-control-sm" placeholder="Mã môn" required /></div>
+                    <div class="col-4"><input name="Name" class="form-control form-control-sm" placeholder="Tên môn" required /></div>
+                    <div class="col-2"><input name="Credits" type="number" class="form-control form-control-sm" value="3" min="1" max="15" /></div>
+                    <div class="col-3">
+                        <select name="FacultyId" class="form-select form-select-sm">
+                            @foreach (var f in Model.Faculties) { <option value="@f.FacultyId">@f.Code</option> }
+                        </select>
+                    </div>
+                    <div class="col-12 text-end"><button type="submit" class="btn btn-sm btn-primary">Thêm môn</button></div>
+                </form>
+                <table class="table table-sm table-bordered mb-2">
+                    <thead><tr><th>Mã</th><th>Tên môn</th><th>TC</th><th>Trọng số</th></tr></thead>
+                    <tbody>
+                        @foreach (var co in Model.Courses)
+                        {
+                            <tr><td>@co.Code</td><td>@co.Name</td><td>@co.Credits</td><td>@co.W1/@co.W2/@co.W3</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <div class="small text-muted">
+                    Tiên quyết:
+                    @string.Join(", ", Model.Prerequisites.Select(p => $"{p.CourseCode} <- {p.PrerequisiteCode}"))
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Giảng viên &amp; CTĐT</div>
+            <div class="card-body">
+                <table class="table table-sm table-bordered mb-3">
+                    <thead><tr><th>Mã GV</th><th>Họ tên</th><th>Email</th><th>SĐT</th></tr></thead>
+                    <tbody>
+                        @foreach (var l in Model.Lecturers)
+                        {
+                            <tr><td>@l.Code</td><td>@l.FullName</td><td>@l.Email</td><td>@l.Phone</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <h6>Chương trình đào tạo</h6>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead><tr><th>Ngành</th><th>Khóa</th><th>Tổng TC</th></tr></thead>
+                    <tbody>
+                        @foreach (var cur in Model.Curricula)
+                        {
+                            <tr><td>@cur.MajorName</td><td>@cur.CohortCode</td><td>@cur.TotalCreditsRequired</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

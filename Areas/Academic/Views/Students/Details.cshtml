@@ -1,0 +1,72 @@
+@model StudentDetailDto
+@{
+    ViewData["Title"] = $"Hồ sơ {Model.StudentCode}";
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+    <h3>Hồ sơ sinh viên: @Model.StudentCode - @Model.FullName</h3>
+    <div>
+        @if (User.HasClaim("perm", "Student.Edit"))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.PublicId" class="btn btn-secondary">Chỉnh sửa</a>
+        }
+        <a asp-action="History" asp-route-id="@Model.PublicId" class="btn btn-info">Lịch sử thay đổi</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Danh sách</a>
+    </div>
+</div>
+
+@if (TempData["StatusMessage"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+
+@if (!Model.IsSensitiveUnmasked)
+{
+    <div class="alert alert-info">
+        Dữ liệu định danh nhạy cảm (CCCD, SĐT, Email, Ngày sinh, Địa chỉ) đang được che theo chính sách đặc quyền tối thiểu.
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Thông tin học tập</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">MSSV</dt><dd class="col-sm-8">@Model.StudentCode</dd>
+                    <dt class="col-sm-4">Họ tên</dt><dd class="col-sm-8">@Model.FullName</dd>
+                    <dt class="col-sm-4">Khoa</dt><dd class="col-sm-8">@Model.FacultyName</dd>
+                    <dt class="col-sm-4">Ngành</dt><dd class="col-sm-8">@Model.MajorName</dd>
+                    <dt class="col-sm-4">Khóa / Lớp</dt><dd class="col-sm-8">@Model.CohortCode / @Model.ClassCode</dd>
+                    <dt class="col-sm-4">Ngày nhập học</dt><dd class="col-sm-8">@Model.AdmissionDate.ToString("yyyy-MM-dd")</dd>
+                    <dt class="col-sm-4">Trạng thái</dt><dd class="col-sm-8">@Model.Status.ToDisplayText()</dd>
+                    <dt class="col-sm-4">Tín chỉ / GPA</dt><dd class="col-sm-8">@Model.CumulativeCredits TC · GPA @Model.CumulativeGpa.ToString("0.00")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Thông tin cá nhân &amp; liên hệ</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Ngày sinh</dt><dd class="col-sm-8">@Model.MaskedOrFullDateOfBirth</dd>
+                    <dt class="col-sm-4">CCCD</dt><dd class="col-sm-8"><code>@Model.MaskedOrFullNationalId</code></dd>
+                    <dt class="col-sm-4">Email</dt><dd class="col-sm-8"><code>@Model.MaskedOrFullEmail</code></dd>
+                    <dt class="col-sm-4">Số điện thoại</dt><dd class="col-sm-8"><code>@Model.MaskedOrFullPhone</code></dd>
+                    <dt class="col-sm-4">Địa chỉ</dt><dd class="col-sm-8">@Model.MaskedOrFullAddress</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (User.HasClaim("perm", "Student.Delete"))
+{
+    <div class="mt-4">
+        <form asp-action="Delete" asp-route-id="@Model.PublicId" method="post" class="d-inline">
+            <button type="submit" class="btn btn-danger">Xóa mềm hồ sơ (chỉ Admin)</button>
+        </form>
+    </div>
+}

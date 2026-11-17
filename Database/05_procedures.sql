@@ -166,10 +166,10 @@ CREATE OR ALTER PROCEDURE app.usp_Student_Update
     @StudentId   INT,
     @FullName    NVARCHAR(150),
     @Gender      TINYINT,
-    @DateOfBirth DATE,
-    @NationalId  VARCHAR(12),
-    @Email       VARCHAR(150),
-    @Phone       VARCHAR(15),
+    @DateOfBirth DATE          = NULL,
+    @NationalId  VARCHAR(12)   = NULL,
+    @Email       VARCHAR(150)  = NULL,
+    @Phone       VARCHAR(15)   = NULL,
     @Address     NVARCHAR(300) = NULL,
     @FacultyId   INT,
     @MajorId     INT,
@@ -181,13 +181,13 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    IF @Email NOT LIKE '%_@__%.__%'
+    IF @Email IS NOT NULL AND @Email NOT LIKE '%_@__%.__%'
         THROW 50002, N'Định dạng email không hợp lệ.', 1;
 
-    IF LEN(@Phone) <> 10 OR @Phone NOT LIKE '0[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+    IF @Phone IS NOT NULL AND (LEN(@Phone) <> 10 OR @Phone NOT LIKE '0[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
         THROW 50003, N'Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0.', 1;
 
-    IF LEN(@NationalId) <> 12 OR @NationalId LIKE '%[^0-9]%'
+    IF @NationalId IS NOT NULL AND (LEN(@NationalId) <> 12 OR @NationalId LIKE '%[^0-9]%')
         THROW 50004, N'CCCD phải gồm đúng 12 chữ số.', 1;
 
     DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
@@ -208,11 +208,11 @@ BEGIN
         UPDATE edu.Students
         SET FullName    = LTRIM(RTRIM(@FullName)),
             Gender      = @Gender,
-            DateOfBirth = @DateOfBirth,
-            NationalId  = @NationalId,
-            Email       = LTRIM(RTRIM(@Email)),
-            Phone       = @Phone,
-            Address     = @Address,
+            DateOfBirth = COALESCE(@DateOfBirth, DateOfBirth),
+            NationalId  = COALESCE(@NationalId, NationalId),
+            Email       = COALESCE(LTRIM(RTRIM(@Email)), Email),
+            Phone       = COALESCE(@Phone, Phone),
+            Address     = COALESCE(@Address, Address),
             FacultyId   = @FacultyId,
             MajorId     = @MajorId,
             CohortId    = @CohortId,
@@ -892,5 +892,405 @@ BEGIN
             INSERT INTO sec.UserFacultyScope (UserId, FacultyId) VALUES (@UserId, @FacultyId);
         END
     END
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 17. Lịch sử thay đổi hồ sơ SV từ Temporal Table (F3.6)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_Student_GetHistory
+    @PublicId UNIQUEIDENTIFIER
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @StudentId INT;
+    SELECT @StudentId = StudentId FROM edu.Students WHERE PublicId = @PublicId;
+
+    IF @StudentId IS NULL
+        RETURN;
+
+    SELECT
+        s.StudentId,
+        s.PublicId,
+        s.StudentCode,
+        s.FullName,
+        s.Gender,
+        f.Name  AS FacultyName,
+        m.Name  AS MajorName,
+        c.Code  AS ClassCode,
+        s.Status,
+        s.IsDeleted,
+        s.UpdatedBy,
+        s.CreatedBy,
+        s.ValidFrom,
+        s.ValidTo
+    FROM edu.Students FOR SYSTEM_TIME ALL s
+    JOIN edu.Faculties f    ON f.FacultyId = s.FacultyId
+    JOIN edu.Majors m       ON m.MajorId = s.MajorId
+    JOIN edu.AdminClasses c ON c.ClassId = s.ClassId
+    WHERE s.StudentId = @StudentId
+    ORDER BY s.ValidFrom DESC;
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 18. Các Stored Procedure quản lý Danh mục đào tạo (M2: F2.1..F2.8)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_Faculty_Upsert
+    @FacultyId INT = NULL,
+    @Code      VARCHAR(20),
+    @Name      NVARCHAR(150),
+    @IsActive  BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NULLIF(LTRIM(RTRIM(@Code)), '') IS NULL OR NULLIF(LTRIM(RTRIM(@Name)), N'') IS NULL
+        THROW 50050, N'Mã khoa và tên khoa không được để trống.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        IF @FacultyId IS NULL OR @FacultyId = 0
+        BEGIN
+            INSERT INTO edu.Faculties (Code, Name, IsActive)
+            VALUES (UPPER(LTRIM(RTRIM(@Code))), LTRIM(RTRIM(@Name)), @IsActive);
+            SET @FacultyId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE edu.Faculties
+            SET Code = UPPER(LTRIM(RTRIM(@Code))), Name = LTRIM(RTRIM(@Name)), IsActive = @IsActive
+            WHERE FacultyId = @FacultyId;
+            IF @@ROWCOUNT = 0 THROW 50051, N'Không tìm thấy khoa cần cập nhật.', 1;
+        END
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT', 'edu.Faculties', CAST(@FacultyId AS NVARCHAR(100)),
+                NULL, (SELECT @FacultyId AS FacultyId, @Code AS Code, @Name AS Name, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_Major_Upsert
+    @MajorId   INT = NULL,
+    @FacultyId INT,
+    @Code      VARCHAR(20),
+    @Name      NVARCHAR(150),
+    @IsActive  BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NULLIF(LTRIM(RTRIM(@Code)), '') IS NULL OR NULLIF(LTRIM(RTRIM(@Name)), N'') IS NULL
+        THROW 50052, N'Mã ngành và tên ngành không được để trống.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        IF @MajorId IS NULL OR @MajorId = 0
+        BEGIN
+            INSERT INTO edu.Majors (FacultyId, Code, Name, IsActive)
+            VALUES (@FacultyId, UPPER(LTRIM(RTRIM(@Code))), LTRIM(RTRIM(@Name)), @IsActive);
+            SET @MajorId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE edu.Majors
+            SET FacultyId = @FacultyId, Code = UPPER(LTRIM(RTRIM(@Code))), Name = LTRIM(RTRIM(@Name)), IsActive = @IsActive
+            WHERE MajorId = @MajorId;
+            IF @@ROWCOUNT = 0 THROW 50053, N'Không tìm thấy ngành cần cập nhật.', 1;
+        END
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT', 'edu.Majors', CAST(@MajorId AS NVARCHAR(100)),
+                NULL, (SELECT @MajorId AS MajorId, @FacultyId AS FacultyId, @Code AS Code, @Name AS Name FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_Cohort_Upsert
+    @CohortId  INT = NULL,
+    @Code      VARCHAR(20),
+    @StartYear SMALLINT,
+    @IsActive  BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NULLIF(LTRIM(RTRIM(@Code)), '') IS NULL OR @StartYear < 2000 OR @StartYear > 2100
+        THROW 50054, N'Mã khóa hoặc năm bắt đầu không hợp lệ.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        IF @CohortId IS NULL OR @CohortId = 0
+        BEGIN
+            INSERT INTO edu.Cohorts (Code, StartYear, IsActive)
+            VALUES (UPPER(LTRIM(RTRIM(@Code))), @StartYear, @IsActive);
+            SET @CohortId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE edu.Cohorts
+            SET Code = UPPER(LTRIM(RTRIM(@Code))), StartYear = @StartYear, IsActive = @IsActive
+            WHERE CohortId = @CohortId;
+            IF @@ROWCOUNT = 0 THROW 50055, N'Không tìm thấy khóa cần cập nhật.', 1;
+        END
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT', 'edu.Cohorts', CAST(@CohortId AS NVARCHAR(100)),
+                NULL, (SELECT @CohortId AS CohortId, @Code AS Code, @StartYear AS StartYear FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_Class_Upsert
+    @ClassId           INT = NULL,
+    @Code              VARCHAR(30),
+    @MajorId           INT,
+    @CohortId          INT,
+    @AdvisorLecturerId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NULLIF(LTRIM(RTRIM(@Code)), '') IS NULL
+        THROW 50056, N'Mã lớp không được để trống.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        IF @ClassId IS NULL OR @ClassId = 0
+        BEGIN
+            INSERT INTO edu.AdminClasses (Code, MajorId, CohortId, AdvisorLecturerId)
+            VALUES (UPPER(LTRIM(RTRIM(@Code))), @MajorId, @CohortId, @AdvisorLecturerId);
+            SET @ClassId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE edu.AdminClasses
+            SET Code = UPPER(LTRIM(RTRIM(@Code))), MajorId = @MajorId, CohortId = @CohortId, AdvisorLecturerId = @AdvisorLecturerId
+            WHERE ClassId = @ClassId;
+            IF @@ROWCOUNT = 0 THROW 50057, N'Không tìm thấy lớp cần cập nhật.', 1;
+        END
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT', 'edu.AdminClasses', CAST(@ClassId AS NVARCHAR(100)),
+                NULL, (SELECT @ClassId AS ClassId, @Code AS Code, @MajorId AS MajorId, @CohortId AS CohortId FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_Semester_Upsert
+    @SemesterId         INT = NULL,
+    @Code               VARCHAR(20),
+    @Name               NVARCHAR(100),
+    @StartDate          DATE,
+    @EndDate            DATE,
+    @RegistrationStart  DATETIME2(3),
+    @RegistrationEnd    DATETIME2(3),
+    @GradeEntryDeadline DATETIME2(3),
+    @IsCurrent          BIT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @EndDate <= @StartDate OR @RegistrationEnd <= @RegistrationStart
+        THROW 50058, N'Khoảng thời gian học kỳ hoặc đăng ký học phần không hợp lệ.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        IF @IsCurrent = 1
+            UPDATE edu.Semesters SET IsCurrent = 0 WHERE IsCurrent = 1;
+
+        IF @SemesterId IS NULL OR @SemesterId = 0
+        BEGIN
+            INSERT INTO edu.Semesters (Code, Name, StartDate, EndDate, RegistrationStart, RegistrationEnd, GradeEntryDeadline, IsCurrent)
+            VALUES (UPPER(LTRIM(RTRIM(@Code))), LTRIM(RTRIM(@Name)), @StartDate, @EndDate, @RegistrationStart, @RegistrationEnd, @GradeEntryDeadline, @IsCurrent);
+            SET @SemesterId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE edu.Semesters
+            SET Code = UPPER(LTRIM(RTRIM(@Code))), Name = LTRIM(RTRIM(@Name)),
+                StartDate = @StartDate, EndDate = @EndDate,
+                RegistrationStart = @RegistrationStart, RegistrationEnd = @RegistrationEnd,
+                GradeEntryDeadline = @GradeEntryDeadline, IsCurrent = @IsCurrent
+            WHERE SemesterId = @SemesterId;
+            IF @@ROWCOUNT = 0 THROW 50059, N'Không tìm thấy học kỳ cần cập nhật.', 1;
+        END
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT', 'edu.Semesters', CAST(@SemesterId AS NVARCHAR(100)),
+                NULL, (SELECT @SemesterId AS SemesterId, @Code AS Code, @IsCurrent AS IsCurrent FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_Course_Upsert
+    @CourseId  INT = NULL,
+    @Code      VARCHAR(20),
+    @Name      NVARCHAR(150),
+    @Credits   TINYINT,
+    @FacultyId INT,
+    @W1        TINYINT = 10,
+    @W2        TINYINT = 30,
+    @W3        TINYINT = 60,
+    @IsActive  BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF (@W1 + @W2 + @W3) <> 100 OR @Credits < 1 OR @Credits > 15
+        THROW 50060, N'Số tín chỉ phải từ 1-15 và tổng trọng số điểm phải bằng 100%.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        IF @CourseId IS NULL OR @CourseId = 0
+        BEGIN
+            INSERT INTO edu.Courses (Code, Name, Credits, FacultyId, W1, W2, W3, IsActive)
+            VALUES (UPPER(LTRIM(RTRIM(@Code))), LTRIM(RTRIM(@Name)), @Credits, @FacultyId, @W1, @W2, @W3, @IsActive);
+            SET @CourseId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE edu.Courses
+            SET Code = UPPER(LTRIM(RTRIM(@Code))), Name = LTRIM(RTRIM(@Name)), Credits = @Credits,
+                FacultyId = @FacultyId, W1 = @W1, W2 = @W2, W3 = @W3, IsActive = @IsActive
+            WHERE CourseId = @CourseId;
+            IF @@ROWCOUNT = 0 THROW 50061, N'Không tìm thấy môn học cần cập nhật.', 1;
+        END
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT', 'edu.Courses', CAST(@CourseId AS NVARCHAR(100)),
+                NULL, (SELECT @CourseId AS CourseId, @Code AS Code, @Credits AS Credits FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_CoursePrerequisite_Add
+    @CourseId             INT,
+    @PrerequisiteCourseId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @CourseId = @PrerequisiteCourseId
+        THROW 50062, N'Môn học không thể là tiên quyết của chính nó.', 1;
+
+    IF NOT EXISTS (SELECT 1 FROM edu.CoursePrerequisites WHERE CourseId = @CourseId AND PrerequisiteCourseId = @PrerequisiteCourseId)
+    BEGIN
+        INSERT INTO edu.CoursePrerequisites (CourseId, PrerequisiteCourseId)
+        VALUES (@CourseId, @PrerequisiteCourseId);
+    END
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_Curriculum_Upsert
+    @MajorId              INT,
+    @CohortId             INT,
+    @TotalCreditsRequired SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @TotalCreditsRequired <= 0
+        THROW 50063, N'Tổng số tín chỉ yêu cầu phải lớn hơn 0.', 1;
+
+    MERGE edu.Curricula AS tgt
+    USING (SELECT @MajorId AS MajorId, @CohortId AS CohortId) AS src
+      ON tgt.MajorId = src.MajorId AND tgt.CohortId = src.CohortId
+    WHEN MATCHED THEN
+        UPDATE SET TotalCreditsRequired = @TotalCreditsRequired
+    WHEN NOT MATCHED THEN
+        INSERT (MajorId, CohortId, TotalCreditsRequired) VALUES (@MajorId, @CohortId, @TotalCreditsRequired);
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_CurriculumCourse_Add
+    @CurriculumId      INT,
+    @CourseId          INT,
+    @IsMandatory       BIT = 1,
+    @SuggestedSemester TINYINT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    MERGE edu.CurriculumCourses AS tgt
+    USING (SELECT @CurriculumId AS CurriculumId, @CourseId AS CourseId) AS src
+      ON tgt.CurriculumId = src.CurriculumId AND tgt.CourseId = src.CourseId
+    WHEN MATCHED THEN
+        UPDATE SET IsMandatory = @IsMandatory, SuggestedSemester = @SuggestedSemester
+    WHEN NOT MATCHED THEN
+        INSERT (CurriculumId, CourseId, IsMandatory, SuggestedSemester)
+        VALUES (@CurriculumId, @CourseId, @IsMandatory, @SuggestedSemester);
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_Lecturer_Upsert
+    @LecturerId INT = NULL,
+    @Code       VARCHAR(20),
+    @FullName   NVARCHAR(150),
+    @FacultyId  INT,
+    @Email      VARCHAR(150),
+    @Phone      VARCHAR(20) = NULL,
+    @IsActive   BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Email NOT LIKE '%_@__%.__%'
+        THROW 50064, N'Định dạng email giảng viên không hợp lệ.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        IF @LecturerId IS NULL OR @LecturerId = 0
+        BEGIN
+            INSERT INTO edu.Lecturers (Code, FullName, FacultyId, Email, Phone, IsActive)
+            VALUES (UPPER(LTRIM(RTRIM(@Code))), LTRIM(RTRIM(@FullName)), @FacultyId, LTRIM(RTRIM(@Email)), @Phone, @IsActive);
+            SET @LecturerId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE edu.Lecturers
+            SET Code = UPPER(LTRIM(RTRIM(@Code))), FullName = LTRIM(RTRIM(@FullName)),
+                FacultyId = @FacultyId, Email = LTRIM(RTRIM(@Email)), Phone = @Phone, IsActive = @IsActive
+            WHERE LecturerId = @LecturerId;
+            IF @@ROWCOUNT = 0 THROW 50065, N'Không tìm thấy giảng viên cần cập nhật.', 1;
+        END
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT', 'edu.Lecturers', CAST(@LecturerId AS NVARCHAR(100)),
+                NULL, (SELECT @LecturerId AS LecturerId, @Code AS Code, @FullName AS FullName, @FacultyId AS FacultyId FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
 END
 GO

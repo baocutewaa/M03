@@ -4,10 +4,12 @@ using System.Globalization;
 using M03_Opus.Data;
 using M03_Opus.Domain.Entities;
 using M03_Opus.Domain.Enums;
+using M03_Opus.Infrastructure.Caching;
 using M03_Opus.Infrastructure.Errors;
 using M03_Opus.Infrastructure.Logging;
 using M03_Opus.Security;
 using M03_Opus.Security.Authorization;
+using M03_Opus.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -86,6 +88,9 @@ builder.Host.UseSerilog((ctx, services, lc) =>
 builder.Services.AddScoped<SqlConnectionFactory>();
 builder.Services.AddScoped<SessionContextInterceptor>();
 builder.Services.AddScoped<AuditLogger>();
+builder.Services.AddSingleton<CatalogCache>();
+builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<StudentService>();
 
 builder.Services.AddDbContext<AuthDbContext>(o =>
     o.UseSqlServer(smsAppConnection, s =>
@@ -182,10 +187,12 @@ builder.Services.AddAuthorization(o =>
     o.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
+    o.AddPolicy("StudentScope", p => p.AddRequirements(new StudentScopeRequirement()));
 });
 
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, StudentScopeHandler>();
 
 builder.Services.AddScoped<AntiforgeryFailureLogger>();
 builder.Services.AddScoped<Admin2FaEnforcementFilter>();

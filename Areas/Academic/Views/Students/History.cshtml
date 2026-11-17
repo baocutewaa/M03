@@ -1,0 +1,38 @@
+@model IReadOnlyList<StudentHistoryItemDto>
+@{
+    ViewData["Title"] = "Lịch sử thay đổi hồ sơ (Temporal)";
+    var publicId = (Guid)ViewBag.PublicId;
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+    <h3>Lịch sử phiên bản hồ sơ (Temporal Table)</h3>
+    <a asp-action="Details" asp-route-id="@publicId" class="btn btn-outline-secondary">Quay lại hồ sơ</a>
+</div>
+
+<table class="table table-bordered table-sm">
+    <thead class="table-light">
+        <tr>
+            <th>Hiệu lực từ (UTC)</th>
+            <th>Đến (UTC)</th>
+            <th>MSSV</th>
+            <th>Họ và tên</th>
+            <th>Khoa / Ngành / Lớp</th>
+            <th>Trạng thái</th>
+            <th>Người thực hiện</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var h in Model)
+        {
+            <tr>
+                <td>@h.ValidFrom.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@(h.ValidTo.Year >= 9999 ? "Hiện tại" : h.ValidTo.ToString("yyyy-MM-dd HH:mm:ss"))</td>
+                <td>@h.StudentCode</td>
+                <td>@h.FullName</td>
+                <td>@h.FacultyName / @h.MajorName / @h.ClassCode</td>
+                <td>@(h.IsDeleted ? "Đã xóa mềm" : h.Status.ToDisplayText())</td>
+                <td>@h.Actor</td>
+            </tr>
+        }
+    </tbody>
+</table>

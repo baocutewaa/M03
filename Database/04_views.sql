@@ -304,3 +304,44 @@ CREATE OR ALTER VIEW app.vw_CatalogLecturers AS
 SELECT LecturerId, UserId, Code, FullName, FacultyId, Email, Phone, IsActive
 FROM edu.Lecturers;
 GO
+
+CREATE OR ALTER VIEW app.vw_CatalogPrerequisites AS
+SELECT
+    cp.CourseId,
+    c.Code  AS CourseCode,
+    c.Name  AS CourseName,
+    cp.PrerequisiteCourseId,
+    p.Code  AS PrerequisiteCode,
+    p.Name  AS PrerequisiteName
+FROM edu.CoursePrerequisites cp
+JOIN edu.Courses c ON c.CourseId = cp.CourseId
+JOIN edu.Courses p ON p.CourseId = cp.PrerequisiteCourseId;
+GO
+
+CREATE OR ALTER VIEW app.vw_CatalogCurricula AS
+SELECT
+    cur.CurriculumId,
+    cur.MajorId,
+    m.Code AS MajorCode,
+    m.Name AS MajorName,
+    m.FacultyId,
+    cur.CohortId,
+    co.Code AS CohortCode,
+    cur.TotalCreditsRequired
+FROM edu.Curricula cur
+JOIN edu.Majors m   ON m.MajorId = cur.MajorId
+JOIN edu.Cohorts co ON co.CohortId = cur.CohortId;
+GO
+
+CREATE OR ALTER VIEW app.vw_CatalogCurriculumCourses AS
+SELECT
+    cc.CurriculumId,
+    cc.CourseId,
+    c.Code AS CourseCode,
+    c.Name AS CourseName,
+    c.Credits,
+    cc.IsMandatory,
+    cc.SuggestedSemester
+FROM edu.CurriculumCourses cc
+JOIN edu.Courses c ON c.CourseId = cc.CourseId;
+GO
