@@ -478,3 +478,18 @@ public sealed class ReportStudentContactViewRow
     public string FacultyName { get; set; } = string.Empty;
     public byte Status { get; set; }
 }
+
+public sealed class DataChangeLogViewRow
+{
+    public long Id { get; set; }
+    public DateTime At { get; set; }
+    public string? AppUserId { get; set; }
+    public string? AppUserName { get; set; }
+    public string DbUser { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string TableName { get; set; } = string.Empty;
+    public string RecordKey { get; set; } = string.Empty;
+    public string? OldValues { get; set; }
+    public string? NewValues { get; set; }
+    public string? CorrelationId { get; set; }
+}

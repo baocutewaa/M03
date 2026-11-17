@@ -116,3 +116,30 @@ public sealed class AnnouncementsIndexViewModel
     public IReadOnlyList<AnnouncementViewRow> Announcements { get; init; } = [];
     public AnnouncementInput Input { get; init; } = new();
 }
+
+public sealed class FacultyTranscriptRowDto
+{
+    public string StudentCode { get; init; } = string.Empty;
+    public string FullName { get; init; } = string.Empty;
+    public string ClassCode { get; init; } = string.Empty;
+    public string CourseCode { get; init; } = string.Empty;
+    public string CourseName { get; init; } = string.Empty;
+    public byte Credits { get; init; }
+    public decimal? TotalScore { get; init; }
+    public string? LetterGrade { get; init; }
+    public decimal? Gpa4 { get; init; }
+    public decimal CumulativeGpa { get; init; }
+}
+
+public sealed class FacultyTranscriptPageModel
+{
+    public int? FacultyId { get; init; }
+    public int? SemesterId { get; init; }
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 50;
+    public int TotalCount { get; init; }
+    public IReadOnlyList<FacultyTranscriptRowDto> Items { get; init; } = [];
+    public IReadOnlyList<FacultyViewRow> Faculties { get; init; } = [];
+    public IReadOnlyList<SemesterViewRow> Semesters { get; init; } = [];
+    public string? ErrorMessage { get; init; }
+}

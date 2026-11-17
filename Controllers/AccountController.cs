@@ -10,6 +10,7 @@ using M03_Opus.Models.Account;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace M03_Opus.Controllers;
@@ -39,6 +40,7 @@ public sealed partial class AccountController(
     [AllowAnonymous]
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginInput input)
     {
         ArgumentNullException.ThrowIfNull(input);

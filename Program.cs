@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using M03_Opus.Data;
 using M03_Opus.Domain.Entities;
 using M03_Opus.Domain.Enums;
@@ -10,6 +12,7 @@ using M03_Opus.Infrastructure.Caching;
 using M03_Opus.Infrastructure.Errors;
 using M03_Opus.Infrastructure.Files;
 using M03_Opus.Infrastructure.Logging;
+using M03_Opus.Infrastructure.Middleware;
 using M03_Opus.Security;
 using M03_Opus.Security.Authorization;
 using M03_Opus.Services;
@@ -20,6 +23,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -38,7 +42,10 @@ builder.WebHost.ConfigureKestrel(o =>
 {
     o.AddServerHeader = false;
     o.Limits.MaxRequestBodySize = 10 * 1024 * 1024;
+    o.Limits.MaxConcurrentConnections = 200;
+    o.Limits.MaxConcurrentUpgradedConnections = 50;
     o.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
+    o.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(60);
 });
 
 builder.Services.AddHttpContextAccessor();
@@ -103,6 +110,8 @@ builder.Services.AddScoped<SecureFileStorage>();
 builder.Services.AddScoped<DocumentAndPortalService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ExportService>();
+builder.Services.AddSingleton<MonitoringMetrics>();
+builder.Services.AddScoped<MonitoringService>();
 
 builder.Services.AddDbContext<AuthDbContext>(o =>
     o.UseSqlServer(smsAppConnection, s =>
@@ -281,6 +290,90 @@ builder.Services.AddProblemDetails();
 builder.Services.AddMemoryCache();
 builder.Services.AddHealthChecks().AddDbContextCheck<SmsDbContext>();
 
+var globalPermitLimit = builder.Configuration.GetValue("RateLimiting:GlobalPermitLimit", 120);
+var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitLimit", 5);
+var searchPermitLimit = builder.Configuration.GetValue("RateLimiting:SearchPermitLimit", 30);
+
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.OnRejected = (ctx, _) =>
+    {
+        var retrySeconds = ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+            ? Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds))
+            : 60;
+        ctx.HttpContext.Response.Headers["Retry-After"] = retrySeconds.ToString(CultureInfo.InvariantCulture);
+
+        var metrics = ctx.HttpContext.RequestServices.GetRequiredService<MonitoringMetrics>();
+        var loggerFactory = ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+        var rlLogger = loggerFactory.CreateLogger("Sms.RateLimiter");
+        metrics.RecordRateLimitHit(
+            rlLogger,
+            ctx.HttpContext.User.Identity?.Name ?? "anonymous",
+            ctx.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            ctx.HttpContext.Request.Path.Value ?? "/");
+
+        return ValueTask.CompletedTask;
+    };
+
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+    {
+        var key = ctx.User.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "anon";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = globalPermitLimit,
+            Window = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true,
+            QueueLimit = 0
+        });
+    });
+
+    o.AddPolicy("login", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = loginPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+
+    o.AddPolicy("search", ctx =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            ctx.User.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = searchPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6,
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+
+    o.AddPolicy("export", _ =>
+        RateLimitPartition.GetConcurrencyLimiter(
+            "export-global",
+            _ => new ConcurrencyLimiterOptions
+            {
+                PermitLimit = 2,
+                QueueLimit = 2,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+
+    o.AddPolicy("upload", ctx =>
+        RateLimitPartition.GetTokenBucketLimiter(
+            ctx.User.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 10,
+                TokensPerPeriod = 5,
+                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -300,12 +393,47 @@ app.UseWhen(
     branch => branch.UseStatusCodePagesWithReExecute("/Error/{0}"));
 app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<MaintenanceMiddleware>();
 
 app.UseRouting();
 
 app.UseAuthentication();
+app.Use(async (ctx, next) =>
+{
+    if (ctx.User.Identity?.IsAuthenticated != true
+        && ctx.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
+        && ctx.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        var apiAuth = await ctx.AuthenticateAsync("Api").ConfigureAwait(false);
+        if (apiAuth.Succeeded && apiAuth.Principal is not null)
+        {
+            ctx.User = apiAuth.Principal;
+        }
+    }
+
+    var correlationId = Activity.Current?.Id ?? ctx.TraceIdentifier;
+    using (Serilog.Context.LogContext.PushProperty("UserId", ctx.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "-"))
+    using (Serilog.Context.LogContext.PushProperty("UserName", ctx.User.Identity?.Name ?? "anonymous"))
+    using (Serilog.Context.LogContext.PushProperty("ClientIp", ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"))
+    using (Serilog.Context.LogContext.PushProperty("RequestPath", ctx.Request.Path.Value ?? "/"))
+    using (Serilog.Context.LogContext.PushProperty("CorrelationId", correlationId))
+    {
+        await next(ctx).ConfigureAwait(false);
+    }
+});
+app.UseRateLimiter();
 app.UseAuthorization();
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(o =>
+{
+    o.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("UserId", httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "-");
+        diagnosticContext.Set("UserName", httpContext.User.Identity?.Name ?? "anonymous");
+        diagnosticContext.Set("ClientIp", httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        diagnosticContext.Set("RequestPath", httpContext.Request.Path.Value ?? "/");
+        diagnosticContext.Set("CorrelationId", Activity.Current?.Id ?? httpContext.TraceIdentifier);
+    };
+});
 
 app.MapStaticAssets();
 app.MapHealthChecks("/health").AllowAnonymous();

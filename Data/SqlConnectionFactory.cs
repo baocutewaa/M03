@@ -1,9 +1,10 @@
 using M03_Opus.Domain.Enums;
+using Microsoft.Data.SqlClient;
 
 namespace M03_Opus.Data;
 
 /// <summary>
-/// Chọn chuỗi kết nối SQL Server theo mức đặc quyền của phiên hiện tại (Tình huống 4 &amp; 13).
+/// Chọn chuỗi kết nối SQL Server theo mức đặc quyền của phiên hiện tại và giới hạn Connection Pool (Tình huống 4, 13, 26).
 /// </summary>
 public sealed class SqlConnectionFactory(
     IConfiguration configuration,
@@ -21,7 +22,7 @@ public sealed class SqlConnectionFactory(
             var adminConn = configuration.GetConnectionString("SmsAppAdmin");
             if (!string.IsNullOrWhiteSpace(adminConn))
             {
-                return adminConn;
+                return ApplyPoolLimits(adminConn);
             }
         }
 
@@ -31,6 +32,16 @@ public sealed class SqlConnectionFactory(
             throw new InvalidOperationException("Missing required configuration: ConnectionStrings:SmsApp.");
         }
 
-        return appConn;
+        return ApplyPoolLimits(appConn);
+    }
+
+    private static string ApplyPoolLimits(string rawConnectionString)
+    {
+        var csb = new SqlConnectionStringBuilder(rawConnectionString)
+        {
+            MaxPoolSize = 100,
+            ApplicationName = "SMS-Web"
+        };
+        return csb.ConnectionString;
     }
 }

@@ -6,6 +6,7 @@ using M03_Opus.Models.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
@@ -22,6 +23,7 @@ public sealed partial class AuthController(
 {
     [HttpPost("token")]
     [AllowAnonymous]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Token([FromBody] TokenLoginRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);

@@ -36,6 +36,7 @@ public sealed class ErrorController : Controller
             403 => "Bạn không có quyền truy cập chức năng này.",
             404 => "Không tìm thấy trang hoặc dữ liệu yêu cầu.",
             429 => "Bạn gửi quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.",
+            503 => "Hệ thống đang bảo trì. Vui lòng quay lại sau ít phút.",
             _ => "Yêu cầu không thể thực hiện."
         };
 

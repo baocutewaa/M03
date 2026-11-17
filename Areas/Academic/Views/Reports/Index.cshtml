@@ -5,12 +5,15 @@
 
 <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
     <h3>Báo cáo liên hệ sinh viên &amp; học vụ</h3>
-    @if (User.HasClaim("perm", "Report.Export"))
-    {
-        <form asp-action="ExportContacts" method="post">
-            <button type="submit" class="btn btn-success">Xuất Excel (.xlsx)</button>
-        </form>
-    }
+    <div class="d-flex gap-2">
+        <a asp-action="FacultyTranscript" class="btn btn-outline-primary">Bảng điểm toàn khoa</a>
+        @if (User.HasClaim("perm", "Report.Export"))
+        {
+            <form asp-action="ExportContacts" method="post">
+                <button type="submit" class="btn btn-success">Xuất Excel (.xlsx)</button>
+            </form>
+        }
+    </div>
 </div>
 
 @if (!Model.CanViewSensitive)

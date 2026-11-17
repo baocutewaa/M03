@@ -37,6 +37,7 @@ public sealed class SmsDbContext(DbContextOptions<SmsDbContext> options) : DbCon
     public DbSet<ReportStudentContactViewRow> ReportStudentContacts => Set<ReportStudentContactViewRow>();
     public DbSet<UserFacultyScopeEntry> UserFacultyScopes => Set<UserFacultyScopeEntry>();
     public DbSet<ActivityLogEntry> ActivityLogs => Set<ActivityLogEntry>();
+    public DbSet<DataChangeLogViewRow> DataChangeLogs => Set<DataChangeLogViewRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,7 @@ public sealed class SmsDbContext(DbContextOptions<SmsDbContext> options) : DbCon
         modelBuilder.Entity<StudentRequestViewRow>(e => { e.ToView("vw_StudentRequests", "app"); e.HasNoKey(); });
         modelBuilder.Entity<AnnouncementViewRow>(e => { e.ToView("vw_Announcements", "app"); e.HasNoKey(); });
         modelBuilder.Entity<ReportStudentContactViewRow>(e => { e.ToView("vw_ReportStudentContacts", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<DataChangeLogViewRow>(e => { e.ToView("vw_DataChangeLog", "app"); e.HasNoKey(); });
 
         modelBuilder.Entity<UserFacultyScopeEntry>(e =>
         {

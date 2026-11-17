@@ -30,6 +30,12 @@
                                     <a class="nav-link text-dark" asp-area="Admin" asp-controller="Users" asp-action="Index">Quản trị</a>
                                 </li>
                             }
+                            @if (User.HasClaim("perm", "Audit.View") && User.IsInRole("Administrator"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Admin" asp-controller="Monitoring" asp-action="Index">Giám sát &amp; Log</a>
+                                </li>
+                            }
                             @if (User.HasClaim("perm", "Student.View") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
                             {
                                 <li class="nav-item">

@@ -652,3 +652,23 @@ SELECT
     Status
 FROM rpt.vw_StudentContactReport;
 GO
+
+-- ----------------------------------------------------------------------------
+-- 5. View cho GĐ6 (Nhật ký thay đổi dữ liệu dùng cho Dashboard Admin F9.4)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER VIEW app.vw_DataChangeLog
+AS
+SELECT
+    Id,
+    At,
+    AppUserId,
+    AppUserName,
+    DbUser,
+    Action,
+    TableName,
+    RecordKey,
+    OldValues,
+    NewValues,
+    CorrelationId
+FROM audit.DataChangeLog;
+GO

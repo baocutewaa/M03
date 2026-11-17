@@ -788,10 +788,37 @@ BEGIN
     IF @PageSize > 100 SET @PageSize = 100;
 
     DECLARE @Offset INT = (@Page - 1) * @PageSize;
+    DECLARE @TotalCount INT;
 
+    SELECT @TotalCount = COUNT(*)
+    FROM edu.Enrollments e
+    JOIN edu.Students s       ON s.StudentId = e.StudentId
+    JOIN edu.CourseSections cs ON cs.SectionId = e.SectionId
+    WHERE s.FacultyId = @FacultyId
+      AND cs.SemesterId = @SemesterId
+      AND s.IsDeleted = 0;
+
+    ;WITH PageRows AS
+    (
+        SELECT
+            e.EnrollmentId,
+            s.StudentId,
+            s.StudentCode,
+            s.FullName,
+            s.ClassId,
+            cs.CourseId
+        FROM edu.Students s
+        JOIN edu.Enrollments e     ON e.StudentId = s.StudentId
+        JOIN edu.CourseSections cs ON cs.SectionId = e.SectionId
+        WHERE s.FacultyId = @FacultyId
+          AND s.IsDeleted = 0
+          AND cs.SemesterId = @SemesterId
+        ORDER BY s.StudentCode ASC, e.SectionId ASC
+        OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY
+    )
     SELECT
-        s.StudentCode,
-        s.FullName,
+        p.StudentCode,
+        p.FullName,
         ac.Code AS ClassCode,
         co.Code AS CourseCode,
         co.Name AS CourseName,
@@ -800,19 +827,14 @@ BEGIN
         g.LetterGrade,
         g.Gpa4,
         ISNULL(sas.CumulativeGpa, 0.00) AS CumulativeGpa,
-        COUNT(*) OVER() AS TotalCount
-    FROM edu.Enrollments e
-    JOIN edu.Students s       ON s.StudentId = e.StudentId
-    JOIN edu.AdminClasses ac  ON ac.ClassId = s.ClassId
-    JOIN edu.CourseSections cs ON cs.SectionId = e.SectionId
-    JOIN edu.Courses co       ON co.CourseId = cs.CourseId
-    LEFT JOIN edu.Grades g    ON g.EnrollmentId = e.EnrollmentId
-    LEFT JOIN edu.StudentAcademicSummary sas ON sas.StudentId = s.StudentId
-    WHERE s.FacultyId = @FacultyId
-      AND cs.SemesterId = @SemesterId
-      AND s.IsDeleted = 0
-    ORDER BY s.StudentCode ASC, co.Code ASC
-    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+        @TotalCount AS TotalCount
+    FROM PageRows p
+    JOIN edu.Courses co      ON co.CourseId = p.CourseId
+    JOIN edu.AdminClasses ac ON ac.ClassId = p.ClassId
+    LEFT JOIN edu.Grades g   ON g.EnrollmentId = p.EnrollmentId
+    LEFT JOIN edu.StudentAcademicSummary sas ON sas.StudentId = p.StudentId
+    ORDER BY p.StudentCode ASC, co.Code ASC
+    OPTION (RECOMPILE);
 END
 GO
 

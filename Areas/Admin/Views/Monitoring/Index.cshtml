@@ -1,0 +1,192 @@
+@model MonitoringDashboardViewModel
+@{
+    ViewData["Title"] = "Giám sát bảo mật & Nhật ký";
+}
+
+<h3 class="mt-3 mb-3">Bảng điều khiển giám sát bảo mật &amp; Nhật ký (F9.4 - F9.6)</h3>
+
+@if (Model.Summary.IsRateLimitSpike)
+{
+    <div class="alert alert-danger fw-bold">
+        CẢNH BÁO ĐỘT BIẾN DoS: Ghi nhận @Model.Summary.LiveRateLimit1m yêu cầu bị giới hạn (HTTP 429) trong 1 phút gần nhất (&gt; 100/phút).
+    </div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-2">
+        <div class="card border-secondary">
+            <div class="card-body">
+                <div class="small text-muted">CSDL / Health</div>
+                <div class="fs-5 fw-bold @(Model.Summary.DatabaseHealthy ? "text-success" : "text-danger")">
+                    @(Model.Summary.DatabaseHealthy ? "Healthy" : "Unhealthy")
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-warning">
+            <div class="card-body">
+                <div class="small text-muted">ĐN thất bại (24h)</div>
+                <div class="fs-5 fw-bold">@Model.Summary.FailedLogins24h</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-warning">
+            <div class="card-body">
+                <div class="small text-muted">Trái phép 2001 (24h)</div>
+                <div class="fs-5 fw-bold">@Model.Summary.Unauthorized2001_24h</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-danger">
+            <div class="card-body">
+                <div class="small text-muted">Rate limit 2003 (24h)</div>
+                <div class="fs-5 fw-bold">@Model.Summary.RateLimit2003_24h (Live 1m: @Model.Summary.LiveRateLimit1m)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-danger">
+            <div class="card-body">
+                <div class="small text-muted">Lỗi 5xx / SQL (24h)</div>
+                <div class="fs-5 fw-bold">@Model.Summary.Errors5xx_24h</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-info">
+            <div class="card-body">
+                <div class="small text-muted">ĐN bất thường (24h)</div>
+                <div class="fs-5 fw-bold">@Model.Summary.UnusualLogins24h</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="get" asp-action="Index" class="card card-body mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label" for="correlationId">Đối chiếu theo CorrelationId (F9.4)</label>
+            <input id="correlationId" name="correlationId" value="@Model.CorrelationIdFilter" class="form-control form-control-sm" placeholder="Nhập CorrelationId..." />
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-sm btn-primary">Lọc nhật ký</button>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Xóa lọc</a>
+        </div>
+    </div>
+</form>
+
+<h5>1. Sự kiện bảo mật &amp; lỗi gần đây (<code>SMS_Log.log.AppLogs</code>)</h5>
+<table class="table table-bordered table-sm mb-4">
+    <thead class="table-light">
+        <tr>
+            <th>Thời gian (UTC)</th>
+            <th>EventId</th>
+            <th>Level</th>
+            <th>User</th>
+            <th>IP</th>
+            <th>Path</th>
+            <th>CorrelationId</th>
+            <th>Nội dung</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var e in Model.SecurityEvents)
+        {
+            <tr>
+                <td>@e.TimeStamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@e.EventId</td>
+                <td>@e.Level</td>
+                <td>@e.UserName</td>
+                <td>@e.ClientIp</td>
+                <td>@e.RequestPath</td>
+                <td><code>@e.CorrelationId</code></td>
+                <td>@e.Message</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h5>2. Nhật ký đăng nhập &amp; cảnh báo bất thường (F9.5)</h5>
+<table class="table table-bordered table-sm mb-4">
+    <thead class="table-light">
+        <tr>
+            <th>Thời gian (UTC)</th>
+            <th>Tài khoản</th>
+            <th>Kết quả</th>
+            <th>Lý do</th>
+            <th>IP</th>
+            <th>Bất thường</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var l in Model.LoginEvents)
+        {
+            <tr>
+                <td>@l.At.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@l.UserName</td>
+                <td>@(l.Succeeded ? "Thành công" : "Thất bại")</td>
+                <td>@l.FailureReason</td>
+                <td>@l.Ip</td>
+                <td>@(l.IsUnusual ? "Cảnh báo" : "Bình thường")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <h5>3. ActivityLog (Ứng dụng)</h5>
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Thời gian</th>
+                    <th>User</th>
+                    <th>Hành động</th>
+                    <th>Đối tượng</th>
+                    <th>CorrelationId</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.ActivityLogs)
+                {
+                    <tr>
+                        <td>@a.At.ToString("HH:mm:ss")</td>
+                        <td>@a.UserName</td>
+                        <td>@a.Action</td>
+                        <td>@a.Entity (@a.EntityKey)</td>
+                        <td><code>@a.CorrelationId</code></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-6">
+        <h5>4. DataChangeLog (CSDL)</h5>
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Thời gian</th>
+                    <th>AppUser</th>
+                    <th>Thao tác</th>
+                    <th>Bảng / Khóa</th>
+                    <th>CorrelationId</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in Model.DataChanges)
+                {
+                    <tr>
+                        <td>@d.At.ToString("HH:mm:ss")</td>
+                        <td>@d.AppUserName</td>
+                        <td>@d.Action</td>
+                        <td>@d.TableName (@d.RecordKey)</td>
+                        <td><code>@d.CorrelationId</code></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

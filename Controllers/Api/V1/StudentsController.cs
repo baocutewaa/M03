@@ -5,6 +5,7 @@ using M03_Opus.Models.Api;
 using M03_Opus.Security.Authorization;
 using M03_Opus.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.SqlClient;
 
 namespace M03_Opus.Controllers.Api.V1;
@@ -14,6 +15,7 @@ public sealed class StudentsController(StudentService studentService) : ApiV1Bas
 {
     [HttpGet]
     [HasPermission("Student.View")]
+    [EnableRateLimiting("search")]
     public async Task<IActionResult> Search([FromQuery] StudentSearchQuery query, CancellationToken ct)
     {
         var page = await studentService.SearchAsync(query ?? new StudentSearchQuery(), ct).ConfigureAwait(false);
