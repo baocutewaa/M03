@@ -1,0 +1,34 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+
+The following sources were used:
+   https://api.nuget.org/v3/index.json
+   C:\Program Files (x86)\Microsoft SDKs\NuGetPackages\
+
+The given project `M03_Opus` has no vulnerable packages given the current sources.
+The given project `M03.SecurityTests` has no vulnerable packages given the current sources.
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+
+The following sources were used:
+   https://api.nuget.org/v3/index.json
+   C:\Program Files (x86)\Microsoft SDKs\NuGetPackages\
+
+The given project `M03_Opus` has no deprecated packages given the current sources.
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+
+The following sources were used:
+   https://api.nuget.org/v3/index.json
+   C:\Program Files (x86)\Microsoft SDKs\NuGetPackages\
+
+Project `M03_Opus` has the following updates to its packages
+   [net10.0]: 
+   Top-level Package                                                        Requested   Resolved   Latest
+   > Microsoft.AspNetCore.Authentication.JwtBearer                          10.0.15     10.0.15    11.0.0
+   > Microsoft.AspNetCore.Identity.EntityFrameworkCore                      10.0.15     10.0.15    11.0.0
+   > Microsoft.EntityFrameworkCore.SqlServer                                10.0.15     10.0.15    11.0.0
+   > Microsoft.EntityFrameworkCore.Tools                                    10.0.15     10.0.15    11.0.0
+   > Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore      10.0.15     10.0.15    11.0.0
+   > Serilog.Sinks.MSSqlServer                                              10.0.0      10.0.0     10.0.1
+
