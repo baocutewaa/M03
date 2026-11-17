@@ -190,7 +190,7 @@ public sealed class Phase3StudentsCatalogTests
             {
                 ["__RequestVerificationToken"] = tokenMatch.Groups[1].Value,
                 ["PublicId"] = createdPublicId.ToString(),
-                ["RowVersionBase64"] = rvMatch.Groups[1].Value,
+                ["RowVersionBase64"] = WebUtility.HtmlDecode(rvMatch.Groups[1].Value),
                 ["StudentCode"] = tempCode,
                 ["FullName"] = "Nguyễn Văn Đã Cập Nhật",
                 ["Gender"] = "1",

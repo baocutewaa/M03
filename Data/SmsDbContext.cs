@@ -38,6 +38,9 @@ public sealed class SmsDbContext(DbContextOptions<SmsDbContext> options) : DbCon
     public DbSet<UserFacultyScopeEntry> UserFacultyScopes => Set<UserFacultyScopeEntry>();
     public DbSet<ActivityLogEntry> ActivityLogs => Set<ActivityLogEntry>();
     public DbSet<DataChangeLogViewRow> DataChangeLogs => Set<DataChangeLogViewRow>();
+    public DbSet<LoginEventLogViewRow> SqlLoginEvents => Set<LoginEventLogViewRow>();
+    public DbSet<AuditFileArchiveViewRow> SqlAuditArchives => Set<AuditFileArchiveViewRow>();
+    public DbSet<SecurityAlertViewRow> SecurityAlerts => Set<SecurityAlertViewRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -72,6 +75,9 @@ public sealed class SmsDbContext(DbContextOptions<SmsDbContext> options) : DbCon
         modelBuilder.Entity<AnnouncementViewRow>(e => { e.ToView("vw_Announcements", "app"); e.HasNoKey(); });
         modelBuilder.Entity<ReportStudentContactViewRow>(e => { e.ToView("vw_ReportStudentContacts", "app"); e.HasNoKey(); });
         modelBuilder.Entity<DataChangeLogViewRow>(e => { e.ToView("vw_DataChangeLog", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<LoginEventLogViewRow>(e => { e.ToView("vw_LoginEventLog", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<AuditFileArchiveViewRow>(e => { e.ToView("vw_AuditFileArchive", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<SecurityAlertViewRow>(e => { e.ToView("vw_SecurityAlerts", "app"); e.HasNoKey(); });
 
         modelBuilder.Entity<UserFacultyScopeEntry>(e =>
         {

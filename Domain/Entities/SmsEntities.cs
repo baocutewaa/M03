@@ -493,3 +493,39 @@ public sealed class DataChangeLogViewRow
     public string? NewValues { get; set; }
     public string? CorrelationId { get; set; }
 }
+
+public sealed class LoginEventLogViewRow
+{
+    public long Id { get; set; }
+    public string LoginName { get; set; } = string.Empty;
+    public string? HostName { get; set; }
+    public string? AppName { get; set; }
+    public string? ClientIp { get; set; }
+    public DateTime EventTime { get; set; }
+    public bool Allowed { get; set; }
+}
+
+public sealed class AuditFileArchiveViewRow
+{
+    public long Id { get; set; }
+    public DateTime EventTime { get; set; }
+    public string? ActionId { get; set; }
+    public bool Succeeded { get; set; }
+    public string? ServerPrincipalName { get; set; }
+    public string? DatabasePrincipalName { get; set; }
+    public string? ObjectName { get; set; }
+    public string? StatementText { get; set; }
+    public string? ClientIp { get; set; }
+    public DateTime ArchivedAt { get; set; }
+}
+
+public sealed class SecurityAlertViewRow
+{
+    public long Id { get; set; }
+    public DateTime DetectedAt { get; set; }
+    public string AlertType { get; set; } = string.Empty;
+    public string Severity { get; set; } = string.Empty;
+    public string? TargetLogin { get; set; }
+    public string? ClientIp { get; set; }
+    public string Details { get; set; } = string.Empty;
+}

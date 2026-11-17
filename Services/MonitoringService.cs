@@ -62,6 +62,21 @@ public sealed class MonitoringService(
             .Take(50)
             .ToListAsync(ct)
             .ConfigureAwait(false);
+        var dbSecurityAlerts = await smsDb.SecurityAlerts.AsNoTracking()
+            .OrderByDescending(x => x.DetectedAt)
+            .Take(30)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+        var sqlLoginEvents = await smsDb.SqlLoginEvents.AsNoTracking()
+            .OrderByDescending(x => x.EventTime)
+            .Take(30)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+        var sqlAuditArchives = await smsDb.SqlAuditArchives.AsNoTracking()
+            .OrderByDescending(x => x.EventTime)
+            .Take(30)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
 
         var securityEvents = string.IsNullOrEmpty(filter)
             ? stats.RecentSecurityEvents
@@ -86,7 +101,10 @@ public sealed class MonitoringService(
             SecurityEvents = securityEvents,
             LoginEvents = loginEvents,
             ActivityLogs = activityLogs,
-            DataChanges = dataChanges
+            DataChanges = dataChanges,
+            DbSecurityAlerts = dbSecurityAlerts,
+            SqlLoginEvents = sqlLoginEvents,
+            SqlAuditArchives = sqlAuditArchives
         };
     }
 

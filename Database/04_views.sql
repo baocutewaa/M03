@@ -672,3 +672,48 @@ SELECT
     CorrelationId
 FROM audit.DataChangeLog;
 GO
+
+-- ----------------------------------------------------------------------------
+-- 6. Views cho GĐ7 (Logon Trigger, SQL Audit Archive, Security Alerts - F9.6)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER VIEW app.vw_LoginEventLog
+AS
+SELECT
+    Id,
+    LoginName,
+    HostName,
+    AppName,
+    ClientIp,
+    EventTime,
+    Allowed
+FROM sec.LoginEventLog;
+GO
+
+CREATE OR ALTER VIEW app.vw_AuditFileArchive
+AS
+SELECT
+    Id,
+    EventTime,
+    ActionId,
+    Succeeded,
+    ServerPrincipalName,
+    DatabasePrincipalName,
+    ObjectName,
+    StatementText,
+    ClientIp,
+    ArchivedAt
+FROM audit.AuditFileArchive;
+GO
+
+CREATE OR ALTER VIEW app.vw_SecurityAlerts
+AS
+SELECT
+    Id,
+    DetectedAt,
+    AlertType,
+    Severity,
+    TargetLogin,
+    ClientIp,
+    Details
+FROM audit.SecurityAlerts;
+GO

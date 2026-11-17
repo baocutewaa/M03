@@ -190,3 +190,65 @@
         </table>
     </div>
 </div>
+
+<h5 class="mt-4">5. Cảnh báo bảo mật CSDL (<code>audit.SecurityAlerts</code>) &amp; Logon Trigger (<code>sec.LoginEventLog</code>)</h5>
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr><th>Thời gian (UTC)</th><th>Loại</th><th>Mức</th><th>Login</th><th>Chi tiết</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var sa in Model.DbSecurityAlerts)
+                {
+                    <tr>
+                        <td>@sa.DetectedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@sa.AlertType</td>
+                        <td>@sa.Severity</td>
+                        <td>@sa.TargetLogin</td>
+                        <td>@sa.Details</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-6">
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr><th>Thời gian</th><th>Login</th><th>Host / App</th><th>IP</th><th>Kết quả</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var le in Model.SqlLoginEvents)
+                {
+                    <tr>
+                        <td>@le.EventTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@le.LoginName</td>
+                        <td>@le.HostName / @le.AppName</td>
+                        <td>@le.ClientIp</td>
+                        <td>@(le.Allowed ? "Cho phép" : "Từ chối")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h5>6. Kho lưu trữ SQL Server Audit (<code>audit.AuditFileArchive</code>)</h5>
+<table class="table table-bordered table-sm">
+    <thead class="table-light">
+        <tr><th>Thời gian (UTC)</th><th>Action</th><th>OK</th><th>Login</th><th>Đối tượng</th><th>Câu lệnh</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var ar in Model.SqlAuditArchives)
+        {
+            <tr>
+                <td>@ar.EventTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@ar.ActionId</td>
+                <td>@(ar.Succeeded ? "1" : "0")</td>
+                <td>@ar.ServerPrincipalName</td>
+                <td>@ar.ObjectName</td>
+                <td><code>@ar.StatementText</code></td>
+            </tr>
+        }
+    </tbody>
+</table>

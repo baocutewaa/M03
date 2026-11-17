@@ -51,4 +51,7 @@ public sealed class MonitoringDashboardViewModel
     public IReadOnlyList<LoginHistoryEntry> LoginEvents { get; init; } = [];
     public IReadOnlyList<ActivityLogEntry> ActivityLogs { get; init; } = [];
     public IReadOnlyList<DataChangeLogViewRow> DataChanges { get; init; } = [];
+    public IReadOnlyList<SecurityAlertViewRow> DbSecurityAlerts { get; init; } = [];
+    public IReadOnlyList<LoginEventLogViewRow> SqlLoginEvents { get; init; } = [];
+    public IReadOnlyList<AuditFileArchiveViewRow> SqlAuditArchives { get; init; } = [];
 }
