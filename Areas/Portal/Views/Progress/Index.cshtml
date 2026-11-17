@@ -1,0 +1,24 @@
+@model PortalProgressViewModel
+@{
+    ViewData["Title"] = "Tiến độ CTĐT";
+}
+
+<h3 class="mt-3 mb-3">Tiến độ Chương trình đào tạo</h3>
+<p><strong>Tín chỉ đạt / Yêu cầu:</strong> @Model.EarnedCredits / @Model.TotalCreditsRequired · <strong>Môn bắt buộc chưa đạt:</strong> @Model.FailedMandatoryCount</p>
+
+<table class="table table-bordered table-sm">
+    <thead class="table-light">
+        <tr><th>HK dự kiến</th><th>Mã môn</th><th>Tên môn</th><th>TC</th><th>Loại</th><th>Điểm cao nhất</th><th>Trạng thái</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var i in Model.Items)
+        {
+            <tr>
+                <td>@i.SuggestedSemester</td><td>@i.CourseCode</td><td>@i.CourseName</td><td>@i.Credits</td>
+                <td>@(i.IsMandatory ? "Bắt buộc" : "Tự chọn")</td>
+                <td>@(i.BestScore?.ToString("0.0") ?? "-")</td>
+                <td>@(i.IsPassed == 1 ? "Đã đạt" : "Chưa đạt")</td>
+            </tr>
+        }
+    </tbody>
+</table>

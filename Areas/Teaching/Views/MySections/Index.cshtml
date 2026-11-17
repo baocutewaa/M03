@@ -1,0 +1,59 @@
+@model IReadOnlyList<CourseSectionViewRow>
+@{
+    ViewData["Title"] = "Lớp học phần của tôi";
+    var appeals = ViewBag.Appeals as IReadOnlyList<GradeAppealViewRow> ?? [];
+}
+
+<h3 class="mt-3 mb-3">Lớp học phần giảng dạy</h3>
+
+@if (TempData["StatusMessage"] is string ok) { <div class="alert alert-success">@ok</div> }
+@if (TempData["ErrorMessage"] is string err) { <div class="alert alert-danger">@err</div> }
+
+<table class="table table-bordered table-sm mb-4">
+    <thead class="table-light">
+        <tr><th>Mã lớp HP</th><th>Môn học</th><th>Học kỳ</th><th>Lịch</th><th>Phòng</th><th>Sĩ số</th><th>Khóa điểm</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var s in Model)
+        {
+            <tr>
+                <td>@s.SectionCode</td>
+                <td>@s.CourseCode - @s.CourseName</td>
+                <td>@s.SemesterCode</td>
+                <td>Thứ @s.DayOfWeek (T@(s.StartPeriod)-@(s.EndPeriod))</td>
+                <td>@s.Room</td>
+                <td>@s.EnrolledCount / @s.Capacity</td>
+                <td>@(s.IsGradeLocked ? "Đã khóa" : "Đang mở")</td>
+                <td><a asp-action="Details" asp-route-id="@s.SectionId" class="btn btn-sm btn-primary">Điểm danh &amp; Nhập điểm</a></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h5>Đơn phúc khảo thuộc lớp phụ trách (@appeals.Count)</h5>
+<table class="table table-bordered table-sm">
+    <thead><tr><th>MSSV</th><th>Lớp HP</th><th>Điểm</th><th>Lý do</th><th>Trạng thái</th><th>Xử lý</th></tr></thead>
+    <tbody>
+        @foreach (var a in appeals)
+        {
+            <tr>
+                <td>@a.StudentCode - @a.FullName</td>
+                <td>@a.SectionCode</td>
+                <td>@a.TotalScore (@a.LetterGrade)</td>
+                <td>@a.Reason</td>
+                <td>@a.Status</td>
+                <td>
+                    <form asp-action="ResolveAppeal" method="post" class="d-flex gap-1">
+                        <input type="hidden" name="AppealId" value="@a.AppealId" />
+                        <select name="Status" class="form-select form-select-sm">
+                            <option value="2">Đề xuất giữ/sửa (GV)</option>
+                            <option value="4">Từ chối</option>
+                        </select>
+                        <input name="Response" class="form-control form-control-sm" placeholder="Ý kiến giảng viên..." required />
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Gửi</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

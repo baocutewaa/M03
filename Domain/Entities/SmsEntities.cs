@@ -193,3 +193,224 @@ public sealed class CurriculumCourseViewRow
     public bool IsMandatory { get; set; }
     public byte SuggestedSemester { get; set; }
 }
+
+public sealed class CourseSectionViewRow
+{
+    public int SectionId { get; set; }
+    public int CourseId { get; set; }
+    public string CourseCode { get; set; } = string.Empty;
+    public string CourseName { get; set; } = string.Empty;
+    public byte Credits { get; set; }
+    public int CourseFacultyId { get; set; }
+    public string FacultyName { get; set; } = string.Empty;
+    public int SemesterId { get; set; }
+    public string SemesterCode { get; set; } = string.Empty;
+    public string SemesterName { get; set; } = string.Empty;
+    public DateTime RegistrationStart { get; set; }
+    public DateTime RegistrationEnd { get; set; }
+    public DateTime GradeEntryDeadline { get; set; }
+    public string SectionCode { get; set; } = string.Empty;
+    public int LecturerId { get; set; }
+    public string LecturerName { get; set; } = string.Empty;
+    public short Capacity { get; set; }
+    public int EnrolledCount { get; set; }
+    public string Room { get; set; } = string.Empty;
+    public byte DayOfWeek { get; set; }
+    public byte StartPeriod { get; set; }
+    public byte EndPeriod { get; set; }
+    public string Status { get; set; } = "Open";
+    public bool IsGradeLocked { get; set; }
+}
+
+public sealed class SectionRosterViewRow
+{
+    public int SectionId { get; set; }
+    public string SectionCode { get; set; } = string.Empty;
+    public int SemesterId { get; set; }
+    public string SemesterCode { get; set; } = string.Empty;
+    public int CourseId { get; set; }
+    public string CourseCode { get; set; } = string.Empty;
+    public string CourseName { get; set; } = string.Empty;
+    public int LecturerId { get; set; }
+    public short Capacity { get; set; }
+    public string Room { get; set; } = string.Empty;
+    public byte DayOfWeek { get; set; }
+    public byte StartPeriod { get; set; }
+    public byte EndPeriod { get; set; }
+    public string SectionStatus { get; set; } = "Open";
+    public bool IsGradeLocked { get; set; }
+    public int EnrollmentId { get; set; }
+    public int StudentId { get; set; }
+    public Guid StudentPublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string ClassCode { get; set; } = string.Empty;
+    public byte EnrollmentStatus { get; set; }
+    public decimal? AttendanceScore { get; set; }
+    public decimal? MidtermScore { get; set; }
+    public decimal? FinalScore { get; set; }
+    public decimal? TotalScore { get; set; }
+    public string? LetterGrade { get; set; }
+    public decimal? Gpa4 { get; set; }
+    public bool? IsFinalized { get; set; }
+}
+
+public sealed class MyTranscriptViewRow
+{
+    public int EnrollmentId { get; set; }
+    public int StudentId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int SemesterId { get; set; }
+    public string SemesterCode { get; set; } = string.Empty;
+    public string SemesterName { get; set; } = string.Empty;
+    public int CourseId { get; set; }
+    public string CourseCode { get; set; } = string.Empty;
+    public string CourseName { get; set; } = string.Empty;
+    public byte Credits { get; set; }
+    public int SectionId { get; set; }
+    public string SectionCode { get; set; } = string.Empty;
+    public byte EnrollmentStatus { get; set; }
+    public decimal? AttendanceScore { get; set; }
+    public decimal? MidtermScore { get; set; }
+    public decimal? FinalScore { get; set; }
+    public decimal? TotalScore { get; set; }
+    public string? LetterGrade { get; set; }
+    public decimal? Gpa4 { get; set; }
+    public bool? IsFinalized { get; set; }
+}
+
+public sealed class StudentProgressViewRow
+{
+    public int StudentId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public short TotalCreditsRequired { get; set; }
+    public int CourseId { get; set; }
+    public string CourseCode { get; set; } = string.Empty;
+    public string CourseName { get; set; } = string.Empty;
+    public byte Credits { get; set; }
+    public bool IsMandatory { get; set; }
+    public byte SuggestedSemester { get; set; }
+    public decimal? BestScore { get; set; }
+    public int IsPassed { get; set; }
+}
+
+public sealed class AttendanceViewRow
+{
+    public int AttendanceId { get; set; }
+    public int EnrollmentId { get; set; }
+    public int SectionId { get; set; }
+    public int StudentId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public DateOnly SessionDate { get; set; }
+    public byte Status { get; set; }
+    public string? RecordedBy { get; set; }
+    public DateTime RecordedAt { get; set; }
+}
+
+public sealed class GradeAppealViewRow
+{
+    public int AppealId { get; set; }
+    public int EnrollmentId { get; set; }
+    public int SectionId { get; set; }
+    public string SectionCode { get; set; } = string.Empty;
+    public string CourseCode { get; set; } = string.Empty;
+    public string CourseName { get; set; } = string.Empty;
+    public int LecturerId { get; set; }
+    public int StudentId { get; set; }
+    public Guid StudentPublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int FacultyId { get; set; }
+    public decimal? TotalScore { get; set; }
+    public string? LetterGrade { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public byte Status { get; set; }
+    public string? Response { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? ResolvedBy { get; set; }
+    public DateTime? ResolvedAt { get; set; }
+}
+
+public sealed class StudentStatusTimelineViewRow
+{
+    public int Id { get; set; }
+    public int StudentId { get; set; }
+    public Guid StudentPublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int FacultyId { get; set; }
+    public byte? FromStatus { get; set; }
+    public byte ToStatus { get; set; }
+    public string DecisionNo { get; set; } = string.Empty;
+    public DateOnly EffectiveDate { get; set; }
+    public string? Reason { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public sealed class AcademicWarningViewRow
+{
+    public int WarningId { get; set; }
+    public int StudentId { get; set; }
+    public Guid StudentPublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int FacultyId { get; set; }
+    public int SemesterId { get; set; }
+    public string SemesterCode { get; set; } = string.Empty;
+    public byte Level { get; set; }
+    public decimal SemesterGpa { get; set; }
+    public decimal CumulativeGpa { get; set; }
+    public string? ConfirmedBy { get; set; }
+    public DateTime? ConfirmedAt { get; set; }
+}
+
+public sealed class DisciplineRewardViewRow
+{
+    public int Id { get; set; }
+    public int StudentId { get; set; }
+    public Guid StudentPublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int FacultyId { get; set; }
+    public byte Type { get; set; }
+    public string DecisionNo { get; set; } = string.Empty;
+    public DateOnly DecisionDate { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public sealed class GraduationCandidateViewRow
+{
+    public int StudentId { get; set; }
+    public Guid PublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int FacultyId { get; set; }
+    public string FacultyName { get; set; } = string.Empty;
+    public string MajorName { get; set; } = string.Empty;
+    public string ClassCode { get; set; } = string.Empty;
+    public short CumulativeCredits { get; set; }
+    public short TotalCreditsRequired { get; set; }
+    public decimal CumulativeGpa { get; set; }
+    public int MissingMandatoryCount { get; set; }
+    public int DisciplineCount { get; set; }
+    public bool IsEligible { get; set; }
+}
+
+public sealed class AdvisorClassStudentViewRow
+{
+    public int ClassId { get; set; }
+    public string ClassCode { get; set; } = string.Empty;
+    public int? AdvisorLecturerId { get; set; }
+    public Guid StudentPublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public byte Status { get; set; }
+    public short CumulativeCredits { get; set; }
+    public decimal CumulativeGpa { get; set; }
+    public byte WarningStreak { get; set; }
+}

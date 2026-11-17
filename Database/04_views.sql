@@ -345,3 +345,251 @@ SELECT
 FROM edu.CurriculumCourses cc
 JOIN edu.Courses c ON c.CourseId = cc.CourseId;
 GO
+
+-- ----------------------------------------------------------------------------
+-- 3. Views cho M4, M5, M6 (GĐ4)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER FUNCTION app.fn_SectionEnrolledCount(@SectionId INT)
+RETURNS INT
+WITH EXECUTE AS OWNER
+AS
+BEGIN
+    RETURN (
+        SELECT COUNT(*)
+        FROM edu.Enrollments
+        WHERE SectionId = @SectionId AND Status IN (1, 3)
+    );
+END
+GO
+
+CREATE OR ALTER VIEW app.vw_CourseSections
+AS
+SELECT
+    cs.SectionId,
+    cs.CourseId,
+    co.Code        AS CourseCode,
+    co.Name        AS CourseName,
+    co.Credits,
+    co.FacultyId   AS CourseFacultyId,
+    f.Name         AS FacultyName,
+    cs.SemesterId,
+    sem.Code       AS SemesterCode,
+    sem.Name       AS SemesterName,
+    sem.RegistrationStart,
+    sem.RegistrationEnd,
+    sem.GradeEntryDeadline,
+    cs.Code        AS SectionCode,
+    cs.LecturerId,
+    l.FullName     AS LecturerName,
+    cs.Capacity,
+    app.fn_SectionEnrolledCount(cs.SectionId) AS EnrolledCount,
+    cs.Room,
+    cs.DayOfWeek,
+    cs.StartPeriod,
+    cs.EndPeriod,
+    cs.Status,
+    cs.IsGradeLocked
+FROM edu.CourseSections cs
+JOIN edu.Courses co    ON co.CourseId = cs.CourseId
+JOIN edu.Faculties f   ON f.FacultyId = co.FacultyId
+JOIN edu.Semesters sem ON sem.SemesterId = cs.SemesterId
+JOIN edu.Lecturers l   ON l.LecturerId = cs.LecturerId;
+GO
+
+CREATE OR ALTER VIEW app.vw_AttendanceList
+AS
+SELECT
+    a.AttendanceId,
+    a.EnrollmentId,
+    e.SectionId,
+    e.StudentId,
+    s.StudentCode,
+    s.FullName,
+    a.SessionDate,
+    a.Status,
+    a.RecordedBy,
+    a.RecordedAt
+FROM edu.Attendance a
+JOIN edu.Enrollments e ON e.EnrollmentId = a.EnrollmentId
+JOIN edu.Students s    ON s.StudentId = e.StudentId
+WHERE s.IsDeleted = 0;
+GO
+
+CREATE OR ALTER VIEW app.vw_GradeAppeals
+AS
+SELECT
+    ga.AppealId,
+    ga.EnrollmentId,
+    e.SectionId,
+    cs.Code        AS SectionCode,
+    co.Code        AS CourseCode,
+    co.Name        AS CourseName,
+    cs.LecturerId,
+    e.StudentId,
+    s.PublicId     AS StudentPublicId,
+    s.StudentCode,
+    s.FullName,
+    s.FacultyId,
+    g.TotalScore,
+    g.LetterGrade,
+    ga.Reason,
+    ga.Status,
+    ga.Response,
+    ga.CreatedAt,
+    ga.ResolvedBy,
+    ga.ResolvedAt
+FROM edu.GradeAppeals ga
+JOIN edu.Enrollments e     ON e.EnrollmentId = ga.EnrollmentId
+JOIN edu.Students s        ON s.StudentId = e.StudentId
+JOIN edu.CourseSections cs ON cs.SectionId = e.SectionId
+JOIN edu.Courses co        ON co.CourseId = cs.CourseId
+LEFT JOIN edu.Grades g     ON g.EnrollmentId = e.EnrollmentId
+WHERE s.IsDeleted = 0;
+GO
+
+CREATE OR ALTER VIEW app.vw_StudentStatusTimeline
+AS
+SELECT
+    h.Id,
+    h.StudentId,
+    s.PublicId AS StudentPublicId,
+    s.StudentCode,
+    s.FullName,
+    s.FacultyId,
+    h.FromStatus,
+    h.ToStatus,
+    h.DecisionNo,
+    h.EffectiveDate,
+    h.Reason,
+    h.CreatedBy,
+    h.CreatedAt
+FROM edu.StudentStatusHistory h
+JOIN edu.Students s ON s.StudentId = h.StudentId
+WHERE s.IsDeleted = 0;
+GO
+
+CREATE OR ALTER VIEW app.vw_AcademicWarnings
+AS
+SELECT
+    w.WarningId,
+    w.StudentId,
+    s.PublicId AS StudentPublicId,
+    s.StudentCode,
+    s.FullName,
+    s.FacultyId,
+    w.SemesterId,
+    sem.Code   AS SemesterCode,
+    w.Level,
+    w.SemesterGpa,
+    w.CumulativeGpa,
+    w.ConfirmedBy,
+    w.ConfirmedAt
+FROM edu.AcademicWarnings w
+JOIN edu.Students s    ON s.StudentId = w.StudentId
+JOIN edu.Semesters sem ON sem.SemesterId = w.SemesterId
+WHERE s.IsDeleted = 0;
+GO
+
+CREATE OR ALTER VIEW app.vw_DisciplineRewards
+AS
+SELECT
+    dr.Id,
+    dr.StudentId,
+    s.PublicId AS StudentPublicId,
+    s.StudentCode,
+    s.FullName,
+    s.FacultyId,
+    dr.Type,
+    dr.DecisionNo,
+    dr.DecisionDate,
+    dr.Content,
+    dr.CreatedBy,
+    dr.CreatedAt
+FROM edu.DisciplineRewards dr
+JOIN edu.Students s ON s.StudentId = dr.StudentId
+WHERE s.IsDeleted = 0;
+GO
+
+CREATE OR ALTER VIEW app.vw_GraduationCandidates
+AS
+SELECT
+    s.StudentId,
+    s.PublicId,
+    s.StudentCode,
+    s.FullName,
+    s.FacultyId,
+    f.Name AS FacultyName,
+    m.Name AS MajorName,
+    ac.Code AS ClassCode,
+    ISNULL(sas.CumulativeCredits, 0)     AS CumulativeCredits,
+    ISNULL(cur.TotalCreditsRequired, 120) AS TotalCreditsRequired,
+    ISNULL(sas.CumulativeGpa, 0.00)      AS CumulativeGpa,
+    (
+        SELECT COUNT(*)
+        FROM edu.CurriculumCourses cc
+        WHERE cc.CurriculumId = cur.CurriculumId AND cc.IsMandatory = 1
+          AND NOT EXISTS (
+              SELECT 1
+              FROM edu.Enrollments e2
+              JOIN edu.CourseSections cs2 ON cs2.SectionId = e2.SectionId
+              JOIN edu.Grades g2 ON g2.EnrollmentId = e2.EnrollmentId
+              WHERE e2.StudentId = s.StudentId AND cs2.CourseId = cc.CourseId
+                AND g2.IsFinalized = 1 AND g2.TotalScore >= 4.0
+          )
+    ) AS MissingMandatoryCount,
+    (
+        SELECT COUNT(*)
+        FROM edu.DisciplineRewards dr
+        WHERE dr.StudentId = s.StudentId AND dr.Type = 2
+    ) AS DisciplineCount,
+    CASE
+        WHEN s.Status = 1
+         AND ISNULL(sas.CumulativeCredits, 0) >= ISNULL(cur.TotalCreditsRequired, 120)
+         AND ISNULL(sas.CumulativeGpa, 0.00) >= 2.00
+         AND NOT EXISTS (
+             SELECT 1
+             FROM edu.CurriculumCourses cc
+             WHERE cc.CurriculumId = cur.CurriculumId AND cc.IsMandatory = 1
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM edu.Enrollments e2
+                   JOIN edu.CourseSections cs2 ON cs2.SectionId = e2.SectionId
+                   JOIN edu.Grades g2 ON g2.EnrollmentId = e2.EnrollmentId
+                   WHERE e2.StudentId = s.StudentId AND cs2.CourseId = cc.CourseId
+                     AND g2.IsFinalized = 1 AND g2.TotalScore >= 4.0
+               )
+         )
+         AND NOT EXISTS (
+             SELECT 1 FROM edu.DisciplineRewards dr
+             WHERE dr.StudentId = s.StudentId AND dr.Type = 2
+         )
+        THEN CAST(1 AS BIT)
+        ELSE CAST(0 AS BIT)
+    END AS IsEligible
+FROM edu.Students s
+JOIN edu.Faculties f    ON f.FacultyId = s.FacultyId
+JOIN edu.Majors m       ON m.MajorId = s.MajorId
+JOIN edu.AdminClasses ac ON ac.ClassId = s.ClassId
+LEFT JOIN edu.StudentAcademicSummary sas ON sas.StudentId = s.StudentId
+LEFT JOIN edu.Curricula cur ON cur.MajorId = s.MajorId AND cur.CohortId = s.CohortId
+WHERE s.IsDeleted = 0;
+GO
+
+CREATE OR ALTER VIEW app.vw_AdvisorClassStudents
+AS
+SELECT
+    ac.ClassId,
+    ac.Code AS ClassCode,
+    ac.AdvisorLecturerId,
+    s.PublicId AS StudentPublicId,
+    s.StudentCode,
+    s.FullName,
+    s.Status,
+    ISNULL(sas.CumulativeCredits, 0) AS CumulativeCredits,
+    ISNULL(sas.CumulativeGpa, 0.00)  AS CumulativeGpa,
+    ISNULL(sas.WarningStreak, 0)     AS WarningStreak
+FROM edu.AdminClasses ac
+JOIN edu.Students s ON s.ClassId = ac.ClassId
+LEFT JOIN edu.StudentAcademicSummary sas ON sas.StudentId = s.StudentId
+WHERE s.IsDeleted = 0;
+GO

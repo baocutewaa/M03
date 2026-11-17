@@ -42,16 +42,37 @@
                                     <a class="nav-link text-dark" asp-area="Academic" asp-controller="Catalog" asp-action="Index">Danh mục</a>
                                 </li>
                             }
-                            @if (User.HasClaim("perm", "Section.ViewOwn"))
+                            @if (User.HasClaim("perm", "Section.Manage") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Sections" asp-action="Index">Lớp học phần</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Process" asp-action="Index">Quá trình học</a>
+                                </li>
+                            }
+                            @if (User.HasClaim("perm", "Section.ViewOwn") && User.IsInRole("Lecturer"))
                             {
                                 <li class="nav-item">
                                     <a class="nav-link text-dark" asp-area="Teaching" asp-controller="MySections" asp-action="Index">Lớp giảng dạy</a>
                                 </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Teaching" asp-controller="AdvisorClass" asp-action="Index">Lớp cố vấn</a>
+                                </li>
                             }
-                            @if (User.HasClaim("perm", "Grade.ViewOwn"))
+                            @if (User.HasClaim("perm", "Grade.ViewOwn") && User.IsInRole("Student"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Profile" asp-action="Index">Cổng sinh viên</a>
+                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Profile" asp-action="Index">Hồ sơ SV</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Registration" asp-action="Index">Đăng ký HP</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Transcript" asp-action="Index">Bảng điểm</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Progress" asp-action="Index">Tiến độ CTĐT</a>
                                 </li>
                             }
                         }

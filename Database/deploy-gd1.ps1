@@ -68,12 +68,12 @@ $scriptsPre = @(
 
 foreach ($s in $scriptsPre) {
     Write-Host "Running $s..." -ForegroundColor Cyan
-    sqlcmd -S $Server -E -b -I -i (Join-Path $dbDir $s)
+    sqlcmd -S $Server -E -b -I -f 65001 -i (Join-Path $dbDir $s)
     if ($LASTEXITCODE -ne 0) { throw "Script $s thất bại." }
 }
 
 Write-Host "Running 06_logins_users_roles.sql..." -ForegroundColor Cyan
-sqlcmd -S $Server -E -b -I -i (Join-Path $dbDir "06_logins_users_roles.sql") `
+sqlcmd -S $Server -E -b -I -f 65001 -i (Join-Path $dbDir "06_logins_users_roles.sql") `
     -v SmsAppPwd="$smsAppPwd" `
        SmsAppAdminPwd="$smsAppAdminPwd" `
        SmsLogWriterPwd="$smsLogPwd" `
@@ -96,7 +96,7 @@ $scriptsPost = @(
 
 foreach ($s in $scriptsPost) {
     Write-Host "Running $s..." -ForegroundColor Cyan
-    sqlcmd -S $Server -E -b -I -i (Join-Path $dbDir $s)
+    sqlcmd -S $Server -E -b -I -f 65001 -i (Join-Path $dbDir $s)
     if ($LASTEXITCODE -ne 0) { throw "Script $s thất bại." }
 }
 

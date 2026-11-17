@@ -11,6 +11,7 @@
             <a asp-action="Edit" asp-route-id="@Model.PublicId" class="btn btn-secondary">Chỉnh sửa</a>
         }
         <a asp-action="History" asp-route-id="@Model.PublicId" class="btn btn-info">Lịch sử thay đổi</a>
+        <a asp-controller="Process" asp-action="StatusTimeline" asp-route-id="@Model.PublicId" class="btn btn-outline-dark">Trạng thái học tập</a>
         <a asp-action="Index" class="btn btn-outline-secondary">Danh sách</a>
     </div>
 </div>

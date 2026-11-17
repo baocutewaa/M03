@@ -91,6 +91,8 @@ builder.Services.AddScoped<AuditLogger>();
 builder.Services.AddSingleton<CatalogCache>();
 builder.Services.AddScoped<CatalogService>();
 builder.Services.AddScoped<StudentService>();
+builder.Services.AddScoped<SectionAndEnrollmentService>();
+builder.Services.AddScoped<GradeAndProcessService>();
 
 builder.Services.AddDbContext<AuthDbContext>(o =>
     o.UseSqlServer(smsAppConnection, s =>
@@ -188,11 +190,13 @@ builder.Services.AddAuthorization(o =>
         .RequireAuthenticatedUser()
         .Build();
     o.AddPolicy("StudentScope", p => p.AddRequirements(new StudentScopeRequirement()));
+    o.AddPolicy("SectionOwner", p => p.AddRequirements(new SectionOwnerRequirement()));
 });
 
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, StudentScopeHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, SectionOwnerHandler>();
 
 builder.Services.AddScoped<AntiforgeryFailureLogger>();
 builder.Services.AddScoped<Admin2FaEnforcementFilter>();

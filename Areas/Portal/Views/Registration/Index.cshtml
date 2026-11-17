@@ -1,0 +1,49 @@
+@model PortalRegistrationViewModel
+@{
+    ViewData["Title"] = "Đăng ký học phần & Thời khóa biểu";
+}
+
+<h3 class="mt-3 mb-3">Đăng ký học phần &amp; Thời khóa biểu cá nhân</h3>
+
+@if (TempData["StatusMessage"] is string ok) { <div class="alert alert-success">@ok</div> }
+@if (TempData["ErrorMessage"] is string err) { <div class="alert alert-danger">@err</div> }
+
+<h5>Lớp học phần đã đăng ký trong kỳ (@Model.MyEnrollments.Count)</h5>
+<table class="table table-bordered table-sm mb-4">
+    <thead class="table-light"><tr><th>Mã lớp HP</th><th>Mã môn</th><th>Tên môn</th><th>TC</th><th>Học kỳ</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var e in Model.MyEnrollments)
+        {
+            <tr>
+                <td>@e.SectionCode</td><td>@e.CourseCode</td><td>@e.CourseName</td><td>@e.Credits</td><td>@e.SemesterCode</td>
+                <td>
+                    <form asp-action="Drop" method="post">
+                        <input type="hidden" name="enrollmentId" value="@e.EnrollmentId" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Hủy ĐK</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h5>Lớp học phần đang mở</h5>
+<table class="table table-bordered table-sm">
+    <thead class="table-light"><tr><th>Mã lớp HP</th><th>Môn học</th><th>TC</th><th>Giảng viên</th><th>Lịch</th><th>Phòng</th><th>Sĩ số</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var s in Model.OpenSections)
+        {
+            <tr>
+                <td>@s.SectionCode</td><td>@s.CourseCode - @s.CourseName</td><td>@s.Credits</td>
+                <td>@s.LecturerName</td><td>Thứ @s.DayOfWeek (T@(s.StartPeriod)-@(s.EndPeriod))</td>
+                <td>@s.Room</td><td>@s.EnrolledCount / @s.Capacity</td>
+                <td>
+                    <form asp-action="Register" method="post">
+                        <input type="hidden" name="sectionId" value="@s.SectionId" />
+                        <button type="submit" class="btn btn-sm btn-primary">Đăng ký</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

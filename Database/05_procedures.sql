@@ -420,9 +420,7 @@ BEGIN
         IF @SecStatus <> 'Open'
             THROW 50023, N'Lớp học phần đã đóng hoặc bị hủy.', 1;
 
-        DECLARE @CurrentCount INT;
-        SELECT @CurrentCount = COUNT(*) FROM edu.Enrollments WITH (UPDLOCK, HOLDLOCK)
-        WHERE SectionId = @SectionId AND Status IN (1, 3);
+        DECLARE @CurrentCount INT = app.fn_SectionEnrolledCount(@SectionId);
 
         IF @CurrentCount >= @Capacity
             THROW 50024, N'Lớp học phần đã đủ sĩ số.', 1;
@@ -840,6 +838,7 @@ GO
 -- ----------------------------------------------------------------------------
 CREATE OR ALTER PROCEDURE auth.usp_GetUserContext
     @UserId NVARCHAR(450)
+WITH EXECUTE AS OWNER
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -867,6 +866,7 @@ CREATE OR ALTER PROCEDURE auth.usp_LinkUserProfile
     @StudentCode  VARCHAR(20) = NULL,
     @LecturerCode VARCHAR(20) = NULL,
     @FacultyCode  VARCHAR(20) = NULL
+WITH EXECUTE AS OWNER
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1291,6 +1291,337 @@ BEGIN
         INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
         VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT', 'edu.Lecturers', CAST(@LecturerId AS NVARCHAR(100)),
                 NULL, (SELECT @LecturerId AS LecturerId, @Code AS Code, @FullName AS FullName, @FacultyId AS FacultyId FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 19. Mở / cập nhật lớp học phần & phân công giảng viên (M4: F4.1, F4.2)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_Section_Upsert
+    @SectionId   INT = NULL,
+    @CourseId    INT,
+    @SemesterId  INT,
+    @Code        VARCHAR(30),
+    @LecturerId  INT,
+    @Capacity    SMALLINT,
+    @Room        NVARCHAR(50),
+    @DayOfWeek   TINYINT,
+    @StartPeriod TINYINT,
+    @EndPeriod   TINYINT,
+    @Status      VARCHAR(20) = 'Open'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Capacity <= 0 OR @DayOfWeek NOT BETWEEN 2 AND 8 OR @StartPeriod < 1 OR @EndPeriod > 15 OR @EndPeriod < @StartPeriod
+        THROW 50070, N'Sĩ số hoặc khung lịch học không hợp lệ.', 1;
+
+    IF @Status NOT IN ('Open', 'Closed', 'Cancelled')
+        THROW 50071, N'Trạng thái lớp học phần không hợp lệ.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        IF @SectionId IS NULL OR @SectionId = 0
+        BEGIN
+            INSERT INTO edu.CourseSections (CourseId, SemesterId, Code, LecturerId, Capacity, Room, DayOfWeek, StartPeriod, EndPeriod, Status)
+            VALUES (@CourseId, @SemesterId, UPPER(LTRIM(RTRIM(@Code))), @LecturerId, @Capacity, LTRIM(RTRIM(@Room)), @DayOfWeek, @StartPeriod, @EndPeriod, @Status);
+            SET @SectionId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE edu.CourseSections
+            SET CourseId = @CourseId, SemesterId = @SemesterId, Code = UPPER(LTRIM(RTRIM(@Code))),
+                LecturerId = @LecturerId, Capacity = @Capacity, Room = LTRIM(RTRIM(@Room)),
+                DayOfWeek = @DayOfWeek, StartPeriod = @StartPeriod, EndPeriod = @EndPeriod, Status = @Status
+            WHERE SectionId = @SectionId;
+            IF @@ROWCOUNT = 0 THROW 50072, N'Không tìm thấy lớp học phần.', 1;
+        END
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'UPSERT_SECTION', 'edu.CourseSections', CAST(@SectionId AS NVARCHAR(100)),
+                NULL, (SELECT @SectionId AS SectionId, @Code AS Code, @LecturerId AS LecturerId, @Capacity AS Capacity FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 20. Điểm danh theo buổi học (M5: F5.1)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_Attendance_Record
+    @EnrollmentId INT,
+    @SessionDate  DATE,
+    @Status       TINYINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Status NOT IN (1, 2, 3)
+        THROW 50073, N'Trạng thái điểm danh không hợp lệ.', 1;
+
+    DECLARE @LecturerId INT = TRY_CAST(SESSION_CONTEXT(N'LecturerId') AS INT);
+    IF NOT EXISTS (
+        SELECT 1
+        FROM edu.Enrollments e
+        JOIN edu.CourseSections cs ON cs.SectionId = e.SectionId
+        WHERE e.EnrollmentId = @EnrollmentId
+          AND e.Status IN (1, 3)
+          AND (IS_MEMBER(N'db_owner') = 1 OR cs.LecturerId = @LecturerId)
+    )
+        THROW 50074, N'Không có quyền điểm danh cho sinh viên hoặc lớp này.', 1;
+
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+
+    MERGE edu.Attendance AS tgt
+    USING (SELECT @EnrollmentId AS EnrollmentId, @SessionDate AS SessionDate) AS src
+      ON tgt.EnrollmentId = src.EnrollmentId AND tgt.SessionDate = src.SessionDate
+    WHEN MATCHED THEN
+        UPDATE SET Status = @Status, RecordedBy = @Actor, RecordedAt = SYSUTCDATETIME()
+    WHEN NOT MATCHED THEN
+        INSERT (EnrollmentId, SessionDate, Status, RecordedBy, RecordedAt)
+        VALUES (@EnrollmentId, @SessionDate, @Status, @Actor, SYSUTCDATETIME());
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 21. Phúc khảo điểm: SV gửi -> GV xử lý -> Staff duyệt (M5: F5.5, §4.3)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_GradeAppeal_Submit
+    @EnrollmentId INT,
+    @Reason       NVARCHAR(1000)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NULLIF(LTRIM(RTRIM(@Reason)), N'') IS NULL
+        THROW 50075, N'Vui lòng nhập lý do phúc khảo.', 1;
+
+    DECLARE @StudentId INT = TRY_CAST(SESSION_CONTEXT(N'StudentId') AS INT);
+    DECLARE @FinalizedAt DATETIME2(3);
+
+    SELECT @FinalizedAt = g.FinalizedAt
+    FROM edu.Enrollments e
+    JOIN edu.Grades g ON g.EnrollmentId = e.EnrollmentId
+    WHERE e.EnrollmentId = @EnrollmentId
+      AND (@StudentId IS NULL AND IS_MEMBER(N'db_owner') = 1 OR e.StudentId = @StudentId)
+      AND g.IsFinalized = 1;
+
+    IF @FinalizedAt IS NULL
+        THROW 50076, N'Chỉ được phúc khảo học phần đã khóa điểm của chính bạn.', 1;
+
+    IF DATEDIFF(DAY, @FinalizedAt, SYSUTCDATETIME()) > 7
+        THROW 50077, N'Đã quá thời hạn 7 ngày phúc khảo sau khi khóa điểm.', 1;
+
+    IF EXISTS (SELECT 1 FROM edu.GradeAppeals WHERE EnrollmentId = @EnrollmentId)
+        THROW 50078, N'Mỗi học phần chỉ được gửi đơn phúc khảo 1 lần.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        INSERT INTO edu.GradeAppeals (EnrollmentId, Reason, Status)
+        VALUES (@EnrollmentId, LTRIM(RTRIM(@Reason)), 1);
+
+        DECLARE @AppealId INT = SCOPE_IDENTITY();
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'SUBMIT_APPEAL', 'edu.GradeAppeals', CAST(@AppealId AS NVARCHAR(100)),
+                NULL, (SELECT @EnrollmentId AS EnrollmentId FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_GradeAppeal_Resolve
+    @AppealId INT,
+    @Status   TINYINT, -- 2=Reviewed (GV), 3=Approved (Staff), 4=Rejected (GV/Staff)
+    @Response NVARCHAR(1000)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Status NOT IN (2, 3, 4) OR NULLIF(LTRIM(RTRIM(@Response)), N'') IS NULL
+        THROW 50079, N'Trạng thái hoặc nội dung phản hồi phúc khảo không hợp lệ.', 1;
+
+    DECLARE @AppRole NVARCHAR(20) = TRY_CAST(SESSION_CONTEXT(N'AppRole') AS NVARCHAR(20));
+    DECLARE @LecturerId INT = TRY_CAST(SESSION_CONTEXT(N'LecturerId') AS INT);
+
+    IF @Status = 3 AND ISNULL(@AppRole, N'') NOT IN (N'Staff', N'Administrator') AND IS_MEMBER(N'db_owner') <> 1
+        THROW 50080, N'Chỉ Giáo vụ hoặc Quản trị viên được duyệt kết quả phúc khảo.', 1;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM edu.GradeAppeals ga
+        JOIN edu.Enrollments e ON e.EnrollmentId = ga.EnrollmentId
+        JOIN edu.CourseSections cs ON cs.SectionId = e.SectionId
+        WHERE ga.AppealId = @AppealId
+          AND (IS_MEMBER(N'db_owner') = 1
+               OR @AppRole IN (N'Administrator', N'Staff')
+               OR (@AppRole = N'Lecturer' AND cs.LecturerId = @LecturerId))
+    )
+        THROW 50081, N'Không tìm thấy đơn phúc khảo hoặc không thuộc phạm vi xử lý.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        UPDATE edu.GradeAppeals
+        SET Status = @Status, Response = LTRIM(RTRIM(@Response)), ResolvedBy = @Actor, ResolvedAt = SYSUTCDATETIME()
+        WHERE AppealId = @AppealId;
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'RESOLVE_APPEAL', 'edu.GradeAppeals', CAST(@AppealId AS NVARCHAR(100)),
+                NULL, (SELECT @Status AS Status, @Response AS Response FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 22. Tự động xét & xác nhận Cảnh báo học vụ (M6: F6.3, §4.4)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_AcademicWarning_Evaluate
+    @SemesterId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @AppRole NVARCHAR(20) = TRY_CAST(SESSION_CONTEXT(N'AppRole') AS NVARCHAR(20));
+    IF ISNULL(@AppRole, N'') NOT IN (N'Administrator', N'Staff') AND IS_MEMBER(N'db_owner') <> 1
+        THROW 50082, N'Chỉ Giáo vụ hoặc Quản trị viên được chạy xét cảnh báo học vụ.', 1;
+
+    DECLARE @SemYear INT = (SELECT YEAR(StartDate) FROM edu.Semesters WHERE SemesterId = @SemesterId);
+    IF @SemYear IS NULL
+        THROW 50083, N'Học kỳ không tồn tại.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        ;WITH SemGpa AS (
+            SELECT
+                s.StudentId,
+                co_h.StartYear,
+                CAST(SUM(g.Gpa4 * co.Credits) / NULLIF(SUM(co.Credits), 0) AS DECIMAL(3,2)) AS TermGpa,
+                ISNULL(sas.CumulativeGpa, 0.00) AS CumGpa,
+                ISNULL(sas.WarningStreak, 0) AS PrevStreak
+            FROM edu.Students s
+            JOIN edu.Cohorts co_h ON co_h.CohortId = s.CohortId
+            JOIN edu.Enrollments e ON e.StudentId = s.StudentId
+            JOIN edu.CourseSections cs ON cs.SectionId = e.SectionId AND cs.SemesterId = @SemesterId
+            JOIN edu.Courses co ON co.CourseId = cs.CourseId
+            JOIN edu.Grades g ON g.EnrollmentId = e.EnrollmentId AND g.IsFinalized = 1
+            LEFT JOIN edu.StudentAcademicSummary sas ON sas.StudentId = s.StudentId
+            WHERE s.IsDeleted = 0 AND s.Status = 1
+            GROUP BY s.StudentId, co_h.StartYear, sas.CumulativeGpa, sas.WarningStreak
+        ),
+        Flagged AS (
+            SELECT
+                StudentId,
+                TermGpa,
+                CumGpa,
+                CASE
+                    WHEN TermGpa < 1.00 THEN 1
+                    WHEN (@SemYear - StartYear) <= 0 AND CumGpa < 1.20 THEN 1
+                    WHEN (@SemYear - StartYear) = 1  AND CumGpa < 1.40 THEN 1
+                    WHEN (@SemYear - StartYear) = 2  AND CumGpa < 1.60 THEN 1
+                    WHEN (@SemYear - StartYear) >= 3 AND CumGpa < 1.80 THEN 1
+                    ELSE 0
+                END AS IsWarned,
+                PrevStreak
+            FROM SemGpa
+        )
+        MERGE edu.AcademicWarnings AS tgt
+        USING (
+            SELECT
+                StudentId,
+                TermGpa,
+                CumGpa,
+                CAST(CASE WHEN PrevStreak + 1 >= 3 THEN 3 ELSE PrevStreak + 1 END AS TINYINT) AS NewLevel
+            FROM Flagged
+            WHERE IsWarned = 1
+        ) AS src ON tgt.StudentId = src.StudentId AND tgt.SemesterId = @SemesterId
+        WHEN MATCHED THEN
+            UPDATE SET Level = src.NewLevel, SemesterGpa = src.TermGpa, CumulativeGpa = src.CumGpa
+        WHEN NOT MATCHED THEN
+            INSERT (StudentId, SemesterId, Level, SemesterGpa, CumulativeGpa)
+            VALUES (src.StudentId, @SemesterId, src.NewLevel, src.TermGpa, src.CumGpa);
+
+        UPDATE sas
+        SET sas.WarningStreak = CASE WHEN w.WarningId IS NOT NULL THEN w.Level ELSE 0 END,
+            sas.UpdatedAt = SYSUTCDATETIME()
+        FROM edu.StudentAcademicSummary sas
+        JOIN edu.Students s ON s.StudentId = sas.StudentId
+        LEFT JOIN edu.AcademicWarnings w ON w.StudentId = sas.StudentId AND w.SemesterId = @SemesterId
+        WHERE s.IsDeleted = 0 AND s.Status = 1;
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'EVALUATE_WARNING', 'edu.AcademicWarnings', CAST(@SemesterId AS NVARCHAR(100)),
+                NULL, N'{"Evaluated":true}', @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_AcademicWarning_Confirm
+    @WarningId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+
+    UPDATE w
+    SET ConfirmedBy = @Actor, ConfirmedAt = SYSUTCDATETIME()
+    FROM edu.AcademicWarnings w
+    JOIN edu.Students s ON s.StudentId = w.StudentId
+    WHERE w.WarningId = @WarningId;
+
+    IF @@ROWCOUNT = 0
+        THROW 50084, N'Không tìm thấy cảnh báo học vụ trong phạm vi quyền.', 1;
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 23. Ghi nhận Khen thưởng / Kỷ luật (M6: F6.4)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_DisciplineReward_Add
+    @StudentId    INT,
+    @Type         TINYINT, -- 1=Khen thưởng, 2=Kỷ luật
+    @DecisionNo   NVARCHAR(50),
+    @DecisionDate DATE,
+    @Content      NVARCHAR(1000)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Type NOT IN (1, 2) OR NULLIF(LTRIM(RTRIM(@DecisionNo)), N'') IS NULL OR NULLIF(LTRIM(RTRIM(@Content)), N'') IS NULL
+        THROW 50085, N'Thông tin quyết định khen thưởng/kỷ luật không hợp lệ.', 1;
+
+    IF NOT EXISTS (SELECT 1 FROM edu.Students WHERE StudentId = @StudentId AND IsDeleted = 0)
+        THROW 50006, N'Không tìm thấy hồ sơ sinh viên trong phạm vi quyền.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        INSERT INTO edu.DisciplineRewards (StudentId, Type, DecisionNo, DecisionDate, Content, CreatedBy)
+        VALUES (@StudentId, @Type, LTRIM(RTRIM(@DecisionNo)), @DecisionDate, LTRIM(RTRIM(@Content)), @Actor);
+
+        DECLARE @NewId INT = SCOPE_IDENTITY();
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'ADD_DISCIPLINE_REWARD', 'edu.DisciplineRewards', CAST(@NewId AS NVARCHAR(100)),
+                NULL, (SELECT @StudentId AS StudentId, @Type AS Type, @DecisionNo AS DecisionNo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
     COMMIT;
 END
 GO

@@ -1,0 +1,120 @@
+@{
+    ViewData["Title"] = "Quá trình học tập";
+    var semesters = ViewBag.Semesters as IReadOnlyList<SemesterViewRow> ?? [];
+    var warnings = ViewBag.Warnings as List<AcademicWarningViewRow> ?? [];
+    var appeals = ViewBag.Appeals as IReadOnlyList<GradeAppealViewRow> ?? [];
+    var drs = ViewBag.DisciplineRewards as List<DisciplineRewardViewRow> ?? [];
+    var graduation = ViewBag.Graduation as List<GraduationCandidateViewRow> ?? [];
+}
+
+<h3 class="mt-3 mb-3">Quản lý quá trình học tập (M6) &amp; Phúc khảo</h3>
+
+@if (TempData["StatusMessage"] is string ok) { <div class="alert alert-success">@ok</div> }
+@if (TempData["ErrorMessage"] is string err) { <div class="alert alert-danger">@err</div> }
+
+<div class="card mb-4">
+    <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+        <span>Cảnh báo học vụ (@warnings.Count)</span>
+        <form asp-action="EvaluateWarnings" method="post" class="d-flex gap-2">
+            <select name="semesterId" class="form-select form-select-sm">
+                @foreach (var s in semesters) { <option value="@s.SemesterId">@s.Code</option> }
+            </select>
+            <button type="submit" class="btn btn-sm btn-warning">Xét cảnh báo HK</button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-bordered mb-0">
+            <thead><tr><th>MSSV</th><th>Họ tên</th><th>HK</th><th>Mức</th><th>GPA HK</th><th>GPA TL</th><th>Xác nhận</th></tr></thead>
+            <tbody>
+                @foreach (var w in warnings)
+                {
+                    <tr>
+                        <td>@w.StudentCode</td><td>@w.FullName</td><td>@w.SemesterCode</td>
+                        <td>Mức @w.Level</td><td>@w.SemesterGpa</td><td>@w.CumulativeGpa</td>
+                        <td>
+                            @if (w.ConfirmedAt is null)
+                            {
+                                <form asp-action="ConfirmWarning" method="post">
+                                    <input type="hidden" name="warningId" value="@w.WarningId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Xác nhận</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span>@w.ConfirmedBy</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header fw-bold">Đơn phúc khảo điểm (@appeals.Count)</div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-bordered mb-0">
+            <thead><tr><th>MSSV</th><th>Học phần</th><th>Điểm</th><th>Lý do</th><th>Trạng thái</th><th>Xử lý</th></tr></thead>
+            <tbody>
+                @foreach (var a in appeals)
+                {
+                    <tr>
+                        <td>@a.StudentCode</td><td>@a.CourseCode (@a.SectionCode)</td><td>@a.TotalScore (@a.LetterGrade)</td>
+                        <td>@a.Reason</td><td>@a.Status</td>
+                        <td>
+                            <form asp-action="ResolveAppeal" method="post" class="d-flex gap-1">
+                                <input type="hidden" name="AppealId" value="@a.AppealId" />
+                                <select name="Status" class="form-select form-select-sm">
+                                    <option value="3">Duyệt</option>
+                                    <option value="4">Từ chối</option>
+                                </select>
+                                <input name="Response" class="form-control form-control-sm" placeholder="Kết luận..." required />
+                                <button type="submit" class="btn btn-sm btn-primary">Lưu</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header fw-bold">Khen thưởng &amp; Kỷ luật (@drs.Count)</div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-bordered mb-0">
+            <thead><tr><th>MSSV</th><th>Họ tên</th><th>Loại</th><th>Số QĐ</th><th>Ngày QĐ</th><th>Nội dung</th></tr></thead>
+            <tbody>
+                @foreach (var d in drs)
+                {
+                    <tr>
+                        <td>@d.StudentCode</td><td>@d.FullName</td>
+                        <td>@(d.Type == 1 ? "Khen thưởng" : "Kỷ luật")</td>
+                        <td>@d.DecisionNo</td><td>@d.DecisionDate.ToString("yyyy-MM-dd")</td><td>@d.Content</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header fw-bold">Xét điều kiện tốt nghiệp (@graduation.Count)</div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-bordered mb-0">
+            <thead><tr><th>MSSV</th><th>Họ tên</th><th>Ngành</th><th>TC đạt / YC</th><th>GPA TL</th><th>Môn BB thiếu</th><th>Kỷ luật</th><th>Kết quả</th></tr></thead>
+            <tbody>
+                @foreach (var g in graduation)
+                {
+                    <tr>
+                        <td>@g.StudentCode</td><td>@g.FullName</td><td>@g.MajorName</td>
+                        <td>@g.CumulativeCredits / @g.TotalCreditsRequired</td><td>@g.CumulativeGpa</td>
+                        <td>@g.MissingMandatoryCount</td><td>@g.DisciplineCount</td>
+                        <td>@(g.IsEligible ? "Đủ điều kiện" : "Chưa đủ")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

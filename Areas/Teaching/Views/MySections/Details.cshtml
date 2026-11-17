@@ -1,0 +1,68 @@
+@model SectionDetailViewModel
+@{
+    ViewData["Title"] = $"Lớp {Model.Section.SectionCode}";
+}
+
+<h3 class="mt-3 mb-3">Lớp giảng dạy: @Model.Section.SectionCode - @Model.Section.CourseName</h3>
+
+@if (TempData["StatusMessage"] is string ok) { <div class="alert alert-success">@ok</div> }
+@if (TempData["ErrorMessage"] is string err) { <div class="alert alert-danger">@err</div> }
+
+<div class="mb-3 d-flex gap-2">
+    @if (!Model.Section.IsGradeLocked && User.HasClaim("perm", "Grade.Finalize"))
+    {
+        <form asp-action="FinalizeGrades" method="post">
+            <input type="hidden" name="sectionId" value="@Model.Section.SectionId" />
+            <button type="submit" class="btn btn-warning btn-sm">Khóa điểm lớp học phần</button>
+        </form>
+    }
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Quay lại</a>
+</div>
+
+<table class="table table-bordered table-sm">
+    <thead class="table-light">
+        <tr><th>MSSV</th><th>Họ tên</th><th>Lớp SH</th><th>Điểm danh (@Model.AttendanceDate.ToString("yyyy-MM-dd"))</th><th>Nhập điểm (CC / GK / CK)</th><th>Tổng / Chữ</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var r in Model.Roster)
+        {
+            var att = Model.Attendance.FirstOrDefault(a => a.EnrollmentId == r.EnrollmentId);
+            <tr>
+                <td>@r.StudentCode</td>
+                <td>@r.FullName</td>
+                <td>@r.ClassCode</td>
+                <td>
+                    <form asp-action="RecordAttendance" method="post" class="d-flex gap-1">
+                        <input type="hidden" name="SectionId" value="@Model.Section.SectionId" />
+                        <input type="hidden" name="EnrollmentId" value="@r.EnrollmentId" />
+                        <input type="hidden" name="SessionDate" value="@Model.AttendanceDate.ToString("yyyy-MM-dd")" />
+                        <select name="Status" class="form-select form-select-sm">
+                            <option value="1" selected="@(att?.Status == 1)">Có mặt</option>
+                            <option value="2" selected="@(att?.Status == 2)">Vắng</option>
+                            <option value="3" selected="@(att?.Status == 3)">Có phép</option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Lưu</button>
+                    </form>
+                </td>
+                <td>
+                    @if (!Model.Section.IsGradeLocked && User.HasClaim("perm", "Grade.Enter"))
+                    {
+                        <form asp-action="EnterGrade" method="post" class="d-flex gap-1">
+                            <input type="hidden" name="SectionId" value="@Model.Section.SectionId" />
+                            <input type="hidden" name="EnrollmentId" value="@r.EnrollmentId" />
+                            <input name="AttendanceScore" type="number" step="0.1" min="0" max="10" value="@(r.AttendanceScore ?? 0)" class="form-control form-control-sm" />
+                            <input name="MidtermScore" type="number" step="0.1" min="0" max="10" value="@(r.MidtermScore ?? 0)" class="form-control form-control-sm" />
+                            <input name="FinalScore" type="number" step="0.1" min="0" max="10" value="@(r.FinalScore ?? 0)" class="form-control form-control-sm" />
+                            <button type="submit" class="btn btn-sm btn-primary">Lưu</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span>@r.AttendanceScore / @r.MidtermScore / @r.FinalScore</span>
+                    }
+                </td>
+                <td>@r.TotalScore (@r.LetterGrade)</td>
+            </tr>
+        }
+    </tbody>
+</table>

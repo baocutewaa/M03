@@ -1,0 +1,26 @@
+@model IReadOnlyList<AdvisorClassStudentViewRow>
+@{
+    ViewData["Title"] = "Lớp cố vấn";
+}
+
+<h3 class="mt-3 mb-3">Danh sách sinh viên lớp cố vấn</h3>
+
+<table class="table table-bordered table-sm">
+    <thead class="table-light">
+        <tr><th>Lớp</th><th>MSSV</th><th>Họ và tên</th><th>Trạng thái</th><th>Tín chỉ</th><th>GPA tích lũy</th><th>Mức cảnh báo</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var s in Model)
+        {
+            <tr>
+                <td>@s.ClassCode</td>
+                <td>@s.StudentCode</td>
+                <td>@s.FullName</td>
+                <td>@s.Status.ToDisplayText()</td>
+                <td>@s.CumulativeCredits</td>
+                <td>@s.CumulativeGpa.ToString("0.00")</td>
+                <td>@s.WarningStreak</td>
+            </tr>
+        }
+    </tbody>
+</table>

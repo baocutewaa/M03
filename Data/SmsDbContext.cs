@@ -20,6 +20,17 @@ public sealed class SmsDbContext(DbContextOptions<SmsDbContext> options) : DbCon
     public DbSet<PrerequisiteViewRow> CatalogPrerequisites => Set<PrerequisiteViewRow>();
     public DbSet<CurriculumViewRow> CatalogCurricula => Set<CurriculumViewRow>();
     public DbSet<CurriculumCourseViewRow> CatalogCurriculumCourses => Set<CurriculumCourseViewRow>();
+    public DbSet<CourseSectionViewRow> CourseSections => Set<CourseSectionViewRow>();
+    public DbSet<SectionRosterViewRow> SectionRosters => Set<SectionRosterViewRow>();
+    public DbSet<MyTranscriptViewRow> MyTranscripts => Set<MyTranscriptViewRow>();
+    public DbSet<StudentProgressViewRow> StudentProgresses => Set<StudentProgressViewRow>();
+    public DbSet<AttendanceViewRow> AttendanceList => Set<AttendanceViewRow>();
+    public DbSet<GradeAppealViewRow> GradeAppeals => Set<GradeAppealViewRow>();
+    public DbSet<StudentStatusTimelineViewRow> StudentStatusTimelines => Set<StudentStatusTimelineViewRow>();
+    public DbSet<AcademicWarningViewRow> AcademicWarnings => Set<AcademicWarningViewRow>();
+    public DbSet<DisciplineRewardViewRow> DisciplineRewards => Set<DisciplineRewardViewRow>();
+    public DbSet<GraduationCandidateViewRow> GraduationCandidates => Set<GraduationCandidateViewRow>();
+    public DbSet<AdvisorClassStudentViewRow> AdvisorClassStudents => Set<AdvisorClassStudentViewRow>();
     public DbSet<UserFacultyScopeEntry> UserFacultyScopes => Set<UserFacultyScopeEntry>();
     public DbSet<ActivityLogEntry> ActivityLogs => Set<ActivityLogEntry>();
 
@@ -40,6 +51,17 @@ public sealed class SmsDbContext(DbContextOptions<SmsDbContext> options) : DbCon
         modelBuilder.Entity<PrerequisiteViewRow>(e => { e.ToView("vw_CatalogPrerequisites", "app"); e.HasNoKey(); });
         modelBuilder.Entity<CurriculumViewRow>(e => { e.ToView("vw_CatalogCurricula", "app"); e.HasNoKey(); });
         modelBuilder.Entity<CurriculumCourseViewRow>(e => { e.ToView("vw_CatalogCurriculumCourses", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<CourseSectionViewRow>(e => { e.ToView("vw_CourseSections", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<SectionRosterViewRow>(e => { e.ToView("vw_SectionRoster", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<MyTranscriptViewRow>(e => { e.ToView("vw_MyTranscript", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<StudentProgressViewRow>(e => { e.ToView("vw_StudentProgress", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<AttendanceViewRow>(e => { e.ToView("vw_AttendanceList", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<GradeAppealViewRow>(e => { e.ToView("vw_GradeAppeals", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<StudentStatusTimelineViewRow>(e => { e.ToView("vw_StudentStatusTimeline", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<AcademicWarningViewRow>(e => { e.ToView("vw_AcademicWarnings", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<DisciplineRewardViewRow>(e => { e.ToView("vw_DisciplineRewards", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<GraduationCandidateViewRow>(e => { e.ToView("vw_GraduationCandidates", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<AdvisorClassStudentViewRow>(e => { e.ToView("vw_AdvisorClassStudents", "app"); e.HasNoKey(); });
 
         modelBuilder.Entity<UserFacultyScopeEntry>(e =>
         {

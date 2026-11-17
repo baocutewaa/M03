@@ -1,0 +1,66 @@
+@model PortalProfileViewModel
+@{
+    ViewData["Title"] = "Hồ sơ của tôi";
+}
+
+<h3 class="mt-3 mb-3">Hồ sơ sinh viên của tôi (@Model.Student.StudentCode)</h3>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Thông tin học tập</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Họ và tên</dt><dd class="col-sm-8">@Model.Student.FullName</dd>
+                    <dt class="col-sm-4">Khoa / Ngành</dt><dd class="col-sm-8">@Model.Student.FacultyName / @Model.Student.MajorName</dd>
+                    <dt class="col-sm-4">Lớp / Khóa</dt><dd class="col-sm-8">@Model.Student.ClassCode / @Model.Student.CohortCode</dd>
+                    <dt class="col-sm-4">Trạng thái</dt><dd class="col-sm-8">@Model.Student.Status.ToDisplayText()</dd>
+                    <dt class="col-sm-4">Tín chỉ / GPA</dt><dd class="col-sm-8">@Model.Student.CumulativeCredits TC · @Model.Student.CumulativeGpa.ToString("0.00")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-bold">Lịch sử trạng thái</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Ngày hiệu lực</th><th>Trạng thái</th><th>Số QĐ</th></tr></thead>
+                    <tbody>
+                        @foreach (var h in Model.StatusTimeline)
+                        {
+                            <tr><td>@h.EffectiveDate.ToString("yyyy-MM-dd")</td><td>@h.ToStatus.ToDisplayText()</td><td>@h.DecisionNo</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Warnings.Count > 0)
+{
+    <div class="alert alert-warning">
+        <strong>Cảnh báo học vụ:</strong>
+        @string.Join("; ", Model.Warnings.Select(w => $"HK {w.SemesterCode} - Mức {w.Level} (GPA HK {w.SemesterGpa})"))
+    </div>
+}
+
+@if (Model.DisciplineRewards.Count > 0)
+{
+    <div class="card">
+        <div class="card-header fw-bold">Khen thưởng &amp; Kỷ luật</div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Loại</th><th>Số QĐ</th><th>Ngày</th><th>Nội dung</th></tr></thead>
+                <tbody>
+                    @foreach (var d in Model.DisciplineRewards)
+                    {
+                        <tr><td>@(d.Type == 1 ? "Khen thưởng" : "Kỷ luật")</td><td>@d.DecisionNo</td><td>@d.DecisionDate.ToString("yyyy-MM-dd")</td><td>@d.Content</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
