@@ -1,0 +1,54 @@
+@model LabSqlInjectionViewModel
+@{
+    ViewData["Title"] = "Lab: SQL Injection";
+}
+
+<h3 class="mt-3 mb-3">Lab 1: So sánh SQL Injection (trên <code>lab.StudentSample</code>)</h3>
+
+<form asp-action="SqlInjection" method="post" class="card card-body mb-3">
+    <div class="row g-2">
+        <div class="col-md-6">
+            <label class="form-label" for="keyword">Từ khóa MSSV (thử <code>' OR 1=1--</code>)</label>
+            <input id="keyword" name="keyword" value="@Model.Keyword" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="mode">Chế độ</label>
+            <select id="mode" name="mode" class="form-select">
+                <option value="safe" selected="@(Model.Mode == "safe")">An toàn (Parameterized @@kw)</option>
+                <option value="vuln" selected="@(Model.Mode == "vuln")">Đối chứng lỗi (Concatenated)</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Chạy truy vấn</button>
+        </div>
+    </div>
+</form>
+
+<p class="small text-muted">Câu SQL thực thi: <code>@Model.ExecutedSql</code></p>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<table class="table table-bordered table-sm">
+    <thead>
+        <tr>
+            <th>MSSV</th>
+            <th>Họ tên</th>
+            <th>Khoa</th>
+            <th>GPA</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var s in Model.Results)
+        {
+            <tr>
+                <td>@s.StudentCode</td>
+                <td>@s.FullName</td>
+                <td>@s.FacultyName</td>
+                <td>@s.Gpa.ToString("0.00")</td>
+            </tr>
+        }
+    </tbody>
+</table>

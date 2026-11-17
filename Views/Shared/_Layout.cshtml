@@ -51,6 +51,24 @@
                                     <a class="nav-link text-dark" asp-area="Academic" asp-controller="Process" asp-action="Index">Quá trình học</a>
                                 </li>
                             }
+                            @if (User.HasClaim("perm", "Request.Resolve") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Requests" asp-action="Index">Yêu cầu SV</a>
+                                </li>
+                            }
+                            @if (User.HasClaim("perm", "Announcement.Manage") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Announcements" asp-action="Index">Thông báo</a>
+                                </li>
+                            }
+                            @if (User.HasClaim("perm", "Report.View") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Reports" asp-action="Index">Báo cáo</a>
+                                </li>
+                            }
                             @if (User.HasClaim("perm", "Section.ViewOwn") && User.IsInRole("Lecturer"))
                             {
                                 <li class="nav-item">
@@ -74,6 +92,18 @@
                                 <li class="nav-item">
                                     <a class="nav-link text-dark" asp-area="Portal" asp-controller="Progress" asp-action="Index">Tiến độ CTĐT</a>
                                 </li>
+                                @if (User.HasClaim("perm", "Document.DownloadOwn"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link text-dark" asp-area="Portal" asp-controller="Documents" asp-action="Index">Tài liệu</a>
+                                    </li>
+                                }
+                                @if (User.HasClaim("perm", "Request.Submit"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link text-dark" asp-area="Portal" asp-controller="Requests" asp-action="Index">Yêu cầu &amp; TB</a>
+                                    </li>
+                                }
                             }
                         }
                     </ul>

@@ -1,0 +1,40 @@
+@model LabXssViewModel
+@{
+    ViewData["Title"] = "Lab: XSS & Sanitizer";
+}
+
+<h3 class="mt-3 mb-3">Lab 2: So sánh XSS (Encoding &amp; HtmlSanitizer + CSP)</h3>
+
+<form asp-action="Xss" method="post" class="card card-body mb-4">
+    <div class="row g-2">
+        <div class="col-md-3">
+            <input name="author" class="form-control" placeholder="Người gửi" value="Sinh viên Lab" />
+        </div>
+        <div class="col-md-7">
+            <input name="body" class="form-control" placeholder="Thử &lt;img src=x onerror=alert(1)&gt; hoặc &lt;b&gt;an toàn&lt;/b&gt;" required />
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Gửi mẫu</button>
+        </div>
+    </div>
+</form>
+
+<table class="table table-bordered table-sm">
+    <thead>
+        <tr>
+            <th>Tác giả</th>
+            <th>An toàn 1: Razor Output Encoding (Plain Text)</th>
+            <th>An toàn 2: StrictHtmlSanitizer Whitelist</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var c in Model.Comments)
+        {
+            <tr>
+                <td>@c.Author</td>
+                <td>@c.Body</td>
+                <td>@Html.Raw(Model.Sanitizer.Sanitize(c.Body))</td>
+            </tr>
+        }
+    </tbody>
+</table>

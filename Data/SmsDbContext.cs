@@ -31,6 +31,10 @@ public sealed class SmsDbContext(DbContextOptions<SmsDbContext> options) : DbCon
     public DbSet<DisciplineRewardViewRow> DisciplineRewards => Set<DisciplineRewardViewRow>();
     public DbSet<GraduationCandidateViewRow> GraduationCandidates => Set<GraduationCandidateViewRow>();
     public DbSet<AdvisorClassStudentViewRow> AdvisorClassStudents => Set<AdvisorClassStudentViewRow>();
+    public DbSet<StudentDocumentViewRow> StudentDocuments => Set<StudentDocumentViewRow>();
+    public DbSet<StudentRequestViewRow> StudentRequests => Set<StudentRequestViewRow>();
+    public DbSet<AnnouncementViewRow> Announcements => Set<AnnouncementViewRow>();
+    public DbSet<ReportStudentContactViewRow> ReportStudentContacts => Set<ReportStudentContactViewRow>();
     public DbSet<UserFacultyScopeEntry> UserFacultyScopes => Set<UserFacultyScopeEntry>();
     public DbSet<ActivityLogEntry> ActivityLogs => Set<ActivityLogEntry>();
 
@@ -62,6 +66,10 @@ public sealed class SmsDbContext(DbContextOptions<SmsDbContext> options) : DbCon
         modelBuilder.Entity<DisciplineRewardViewRow>(e => { e.ToView("vw_DisciplineRewards", "app"); e.HasNoKey(); });
         modelBuilder.Entity<GraduationCandidateViewRow>(e => { e.ToView("vw_GraduationCandidates", "app"); e.HasNoKey(); });
         modelBuilder.Entity<AdvisorClassStudentViewRow>(e => { e.ToView("vw_AdvisorClassStudents", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<StudentDocumentViewRow>(e => { e.ToView("vw_DocumentList", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<StudentRequestViewRow>(e => { e.ToView("vw_StudentRequests", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<AnnouncementViewRow>(e => { e.ToView("vw_Announcements", "app"); e.HasNoKey(); });
+        modelBuilder.Entity<ReportStudentContactViewRow>(e => { e.ToView("vw_ReportStudentContacts", "app"); e.HasNoKey(); });
 
         modelBuilder.Entity<UserFacultyScopeEntry>(e =>
         {

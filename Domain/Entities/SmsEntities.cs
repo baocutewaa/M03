@@ -414,3 +414,67 @@ public sealed class AdvisorClassStudentViewRow
     public decimal CumulativeGpa { get; set; }
     public byte WarningStreak { get; set; }
 }
+
+public sealed class StudentDocumentViewRow
+{
+    public int DocumentId { get; set; }
+    public Guid PublicId { get; set; }
+    public int StudentId { get; set; }
+    public Guid StudentPublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string DocType { get; set; } = string.Empty;
+    public string StoredFileName { get; set; } = string.Empty;
+    public string OriginalFileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public long SizeBytes { get; set; }
+    public string Sha256 { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string UploadedBy { get; set; } = string.Empty;
+    public DateTime UploadedAt { get; set; }
+}
+
+public sealed class StudentRequestViewRow
+{
+    public int RequestId { get; set; }
+    public Guid PublicId { get; set; }
+    public int StudentId { get; set; }
+    public Guid StudentPublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int FacultyId { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public byte Status { get; set; }
+    public string? Response { get; set; }
+    public string? HandledBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? HandledAt { get; set; }
+}
+
+public sealed class AnnouncementViewRow
+{
+    public int AnnouncementId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string BodyHtml { get; set; } = string.Empty;
+    public int? FacultyId { get; set; }
+    public string? FacultyName { get; set; }
+    public string PublishedBy { get; set; } = string.Empty;
+    public DateTime PublishedAt { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public sealed class ReportStudentContactViewRow
+{
+    public int StudentId { get; set; }
+    public Guid PublicId { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public DateOnly DateOfBirth { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string ClassCode { get; set; } = string.Empty;
+    public int FacultyId { get; set; }
+    public string FacultyCode { get; set; } = string.Empty;
+    public string FacultyName { get; set; } = string.Empty;
+    public byte Status { get; set; }
+}

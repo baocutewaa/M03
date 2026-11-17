@@ -1625,3 +1625,101 @@ BEGIN
     COMMIT;
 END
 GO
+
+-- ----------------------------------------------------------------------------
+-- 24. Yêu cầu hành chính của sinh viên (F6.7)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_StudentRequest_Create
+    @StudentId INT,
+    @Type      NVARCHAR(50),
+    @Content   NVARCHAR(1500)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NULLIF(LTRIM(RTRIM(@Type)), N'') IS NULL OR NULLIF(LTRIM(RTRIM(@Content)), N'') IS NULL
+        THROW 50090, N'Loại yêu cầu và nội dung không được để trống.', 1;
+
+    IF NOT EXISTS (SELECT 1 FROM edu.Students WHERE StudentId = @StudentId AND IsDeleted = 0)
+        THROW 50006, N'Không tìm thấy hồ sơ sinh viên.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        INSERT INTO edu.StudentRequests (StudentId, Type, Content, Status)
+        VALUES (@StudentId, LTRIM(RTRIM(@Type)), LTRIM(RTRIM(@Content)), 1);
+
+        DECLARE @ReqId INT = SCOPE_IDENTITY();
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'CREATE_REQUEST', 'edu.StudentRequests', CAST(@ReqId AS NVARCHAR(100)),
+                NULL, (SELECT @StudentId AS StudentId, @Type AS Type FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_StudentRequest_Resolve
+    @PublicId UNIQUEIDENTIFIER,
+    @Status   TINYINT,
+    @Response NVARCHAR(1000)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Status NOT IN (2, 3) OR NULLIF(LTRIM(RTRIM(@Response)), N'') IS NULL
+        THROW 50091, N'Trạng thái hoặc nội dung xử lý yêu cầu không hợp lệ.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        UPDATE r
+        SET Status = @Status, Response = LTRIM(RTRIM(@Response)), HandledBy = @Actor, HandledAt = SYSUTCDATETIME()
+        FROM edu.StudentRequests r
+        JOIN edu.Students s ON s.StudentId = r.StudentId
+        WHERE r.PublicId = @PublicId AND s.IsDeleted = 0;
+
+        IF @@ROWCOUNT = 0
+            THROW 50092, N'Không tìm thấy yêu cầu trong phạm vi quyền.', 1;
+
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'RESOLVE_REQUEST', 'edu.StudentRequests', CAST(@PublicId AS NVARCHAR(100)),
+                NULL, (SELECT @Status AS Status, @Response AS Response FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 25. Thông báo rich-text đã sanitize (F8.1)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE app.usp_Announcement_Create
+    @Title     NVARCHAR(200),
+    @BodyHtml  NVARCHAR(MAX),
+    @FacultyId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NULLIF(LTRIM(RTRIM(@Title)), N'') IS NULL OR NULLIF(LTRIM(RTRIM(@BodyHtml)), N'') IS NULL
+        THROW 50093, N'Tiêu đề và nội dung thông báo không được để trống.', 1;
+
+    DECLARE @AppUserId NVARCHAR(450) = TRY_CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(450));
+    DECLARE @Actor NVARCHAR(100) = COALESCE(TRY_CAST(SESSION_CONTEXT(N'UserName') AS NVARCHAR(100)), ORIGINAL_LOGIN());
+    DECLARE @CorrId VARCHAR(64) = TRY_CAST(SESSION_CONTEXT(N'CorrelationId') AS VARCHAR(64));
+
+    BEGIN TRAN;
+        INSERT INTO edu.Announcements (Title, BodyHtml, FacultyId, PublishedBy)
+        VALUES (LTRIM(RTRIM(@Title)), @BodyHtml, @FacultyId, @Actor);
+
+        DECLARE @AnnId INT = SCOPE_IDENTITY();
+        INSERT INTO audit.DataChangeLog (AppUserId, AppUserName, DbUser, Action, TableName, RecordKey, OldValues, NewValues, CorrelationId)
+        VALUES (@AppUserId, @Actor, USER_NAME(), 'CREATE_ANNOUNCEMENT', 'edu.Announcements', CAST(@AnnId AS NVARCHAR(100)),
+                NULL, (SELECT @Title AS Title, @FacultyId AS FacultyId FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), @CorrId);
+    COMMIT;
+END
+GO

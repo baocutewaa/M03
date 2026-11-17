@@ -1,0 +1,58 @@
+@model AnnouncementsIndexViewModel
+@{
+    ViewData["Title"] = "Quản lý thông báo";
+    var faculties = ViewBag.Faculties as IReadOnlyList<FacultyViewRow> ?? [];
+}
+
+<h3 class="mt-3 mb-3">Quản lý thông báo (HTML Whitelist Sanitizer)</h3>
+
+@if (TempData["StatusMessage"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="card mb-4">
+    <div class="card-header fw-bold">Đăng thông báo mới</div>
+    <div class="card-body">
+        <form asp-action="Create" method="post" class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label" for="Title">Tiêu đề</label>
+                <input id="Title" name="Title" class="form-control" maxlength="200" required />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="FacultyId">Phạm vi</label>
+                <select id="FacultyId" name="FacultyId" class="form-select">
+                    <option value="">Toàn trường</option>
+                    @foreach (var f in faculties)
+                    {
+                        <option value="@f.FacultyId">@f.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="BodyHtml">Nội dung HTML (hỗ trợ p, b, strong, i, ul, li, table, a href="https://...")</label>
+                <textarea id="BodyHtml" name="BodyHtml" class="form-control" rows="4" required></textarea>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Đăng thông báo</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@foreach (var ann in Model.Announcements)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>@ann.Title</strong>
+            <span class="text-muted small ms-2">(@(ann.FacultyName ?? "Toàn trường") · @ann.PublishedBy · @ann.PublishedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</span>
+        </div>
+        <div class="card-body">
+            @Html.Raw(ann.BodyHtml)
+        </div>
+    </div>
+}

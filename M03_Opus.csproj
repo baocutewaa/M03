@@ -19,9 +19,13 @@
     <WarningsAsErrors>$(WarningsAsErrors);NU1902;NU1903;NU1904;CA2100;EF1002</WarningsAsErrors>
   </PropertyGroup>
 
-  <!-- Tình huống 13: Không phát hành file cấu hình Development -->
+  <!-- Tình huống 13: Không phát hành file cấu hình Development và SecurityLab trong Release -->
   <ItemGroup>
     <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Compile Remove="Areas\SecurityLab\**" />
+    <Content Remove="Areas\SecurityLab\**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.1" />

@@ -1,0 +1,21 @@
+@{
+    ViewData["Title"] = "SecurityLab (Development Only)";
+}
+
+<h3 class="mt-3 mb-3">SecurityLab - Môi trường đối chứng bảo mật</h3>
+<div class="alert alert-warning">
+    Khu vực này chỉ tồn tại trong bản biên dịch <code>DEBUG</code> khi <code>Environment == Development</code> và <code>Lab:Enabled == true</code>.
+    Truy vấn chạy bằng tài khoản cô lập <code>sms_lab</code> trên schema <code>lab.*</code>.
+</div>
+
+<div class="list-group">
+    <a asp-action="SqlInjection" class="list-group-item list-group-item-action">
+        <strong>1. SQL Injection Comparison (Tình huống 10):</strong> Ghép chuỗi vs Tham số hóa (Parameterized)
+    </a>
+    <a asp-action="Xss" class="list-group-item list-group-item-action">
+        <strong>2. XSS &amp; HTML Sanitizer (Tình huống 11):</strong> Raw output vs Razor Auto-Encoding &amp; StrictHtmlSanitizer + CSP
+    </a>
+    <a asp-action="Errors" class="list-group-item list-group-item-action">
+        <strong>3. Error Leakage Comparison (Tình huống 23):</strong> CorrelationId an toàn vs StackTrace thô
+    </a>
+</div>

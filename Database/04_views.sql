@@ -593,3 +593,62 @@ JOIN edu.Students s ON s.ClassId = ac.ClassId
 LEFT JOIN edu.StudentAcademicSummary sas ON sas.StudentId = s.StudentId
 WHERE s.IsDeleted = 0;
 GO
+
+-- ----------------------------------------------------------------------------
+-- 4. Views cho GĐ5 (Yêu cầu hành chính, Thông báo, Báo cáo liên hệ)
+-- ----------------------------------------------------------------------------
+CREATE OR ALTER VIEW app.vw_StudentRequests
+AS
+SELECT
+    r.RequestId,
+    r.PublicId,
+    r.StudentId,
+    s.PublicId AS StudentPublicId,
+    s.StudentCode,
+    s.FullName,
+    s.FacultyId,
+    r.Type,
+    r.Content,
+    r.Status,
+    r.Response,
+    r.HandledBy,
+    r.CreatedAt,
+    r.HandledAt
+FROM edu.StudentRequests r
+JOIN edu.Students s ON s.StudentId = r.StudentId
+WHERE s.IsDeleted = 0;
+GO
+
+CREATE OR ALTER VIEW app.vw_Announcements
+AS
+SELECT
+    a.AnnouncementId,
+    a.Title,
+    a.BodyHtml,
+    a.FacultyId,
+    f.Name AS FacultyName,
+    a.PublishedBy,
+    a.PublishedAt,
+    a.IsActive
+FROM edu.Announcements a
+LEFT JOIN edu.Faculties f ON f.FacultyId = a.FacultyId
+WHERE a.IsActive = 1;
+GO
+
+CREATE OR ALTER VIEW app.vw_ReportStudentContacts
+AS
+SELECT
+    StudentId,
+    PublicId,
+    StudentCode,
+    FullName,
+    DateOfBirth,
+    Email,
+    Phone,
+    ClassCode,
+    FacultyId,
+    FacultyCode,
+    FacultyName,
+    Status
+FROM rpt.vw_StudentContactReport;
+GO

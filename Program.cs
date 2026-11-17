@@ -1,22 +1,27 @@
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Globalization;
+using System.Security.Claims;
+using System.Text;
 using M03_Opus.Data;
 using M03_Opus.Domain.Entities;
 using M03_Opus.Domain.Enums;
 using M03_Opus.Infrastructure.Caching;
 using M03_Opus.Infrastructure.Errors;
+using M03_Opus.Infrastructure.Files;
 using M03_Opus.Infrastructure.Logging;
 using M03_Opus.Security;
 using M03_Opus.Security.Authorization;
 using M03_Opus.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.MSSqlServer;
@@ -93,6 +98,11 @@ builder.Services.AddScoped<CatalogService>();
 builder.Services.AddScoped<StudentService>();
 builder.Services.AddScoped<SectionAndEnrollmentService>();
 builder.Services.AddScoped<GradeAndProcessService>();
+builder.Services.AddSingleton<StrictHtmlSanitizer>();
+builder.Services.AddScoped<SecureFileStorage>();
+builder.Services.AddScoped<DocumentAndPortalService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<ExportService>();
 
 builder.Services.AddDbContext<AuthDbContext>(o =>
     o.UseSqlServer(smsAppConnection, s =>
@@ -174,6 +184,53 @@ builder.Services.ConfigureApplicationCookie(o =>
         }
     };
 });
+
+var jwtSigningKey = builder.Configuration["Jwt:SigningKey"];
+if (string.IsNullOrWhiteSpace(jwtSigningKey) || Encoding.UTF8.GetByteCount(jwtSigningKey) < 32)
+{
+    throw new InvalidOperationException("Missing or invalid configuration: Jwt:SigningKey (must be at least 32 bytes).");
+}
+
+builder.Services.AddAuthentication()
+    .AddJwtBearer("Api", o =>
+    {
+        o.RequireHttpsMetadata = true;
+        o.MapInboundClaims = false;
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "https://sms.local",
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "sms-api",
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            NameClaimType = ClaimTypes.Name,
+            RoleClaimType = ClaimTypes.Role
+        };
+        o.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async ctx =>
+            {
+                var userId = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var tokenStamp = ctx.Principal?.FindFirstValue("AspNet.Identity.SecurityStamp");
+                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(tokenStamp))
+                {
+                    ctx.Fail("Missing required identity claims.");
+                    return;
+                }
+
+                var userManager = ctx.HttpContext.RequestServices.GetRequiredService<UserManager<AppUser>>();
+                var user = await userManager.FindByIdAsync(userId).ConfigureAwait(false);
+                if (user is null || !user.IsActive || !string.Equals(user.SecurityStamp, tokenStamp, StringComparison.Ordinal))
+                {
+                    ctx.Fail("Token revoked or user inactive.");
+                }
+            }
+        };
+    });
 
 builder.Services.AddAntiforgery(o =>
 {

@@ -1,0 +1,72 @@
+@model IReadOnlyList<StudentDocumentViewRow>
+@{
+    ViewData["Title"] = "Tài liệu & minh chứng";
+}
+
+<h3 class="mt-3 mb-3">Tài liệu &amp; ảnh hồ sơ sinh viên</h3>
+
+@if (TempData["StatusMessage"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="card mb-4">
+    <div class="card-header fw-bold">Tải tệp lên (.jpg, .png, .pdf - tối đa 2MB ảnh / 5MB PDF)</div>
+    <div class="card-body">
+        <form asp-action="Upload" method="post" enctype="multipart/form-data" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label" for="DocType">Loại tài liệu</label>
+                <select id="DocType" name="DocType" class="form-select">
+                    <option value="Photo">Ảnh thẻ (.jpg/.png)</option>
+                    <option value="HoSo">Hồ sơ nhập học</option>
+                    <option value="MinhChung">Minh chứng</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="Description">Mô tả</label>
+                <input id="Description" name="Description" class="form-control" maxlength="200" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="File">Chọn tệp</label>
+                <input id="File" name="File" type="file" class="form-control" required />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Tải lên</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<table class="table table-bordered table-sm">
+    <thead>
+        <tr>
+            <th>Loại</th>
+            <th>Tên tệp</th>
+            <th>Định dạng</th>
+            <th>Kích thước</th>
+            <th>Ngày tải</th>
+            <th>Tải về</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var doc in Model)
+        {
+            <tr>
+                <td>@doc.DocType</td>
+                <td>@doc.OriginalFileName</td>
+                <td>@doc.ContentType</td>
+                <td>@(doc.SizeBytes / 1024) KB</td>
+                <td>@doc.UploadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                <td>
+                    <a asp-area="" asp-controller="Documents" asp-action="Download" asp-route-id="@doc.PublicId" class="btn btn-sm btn-outline-primary">
+                        Tải xuống
+                    </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

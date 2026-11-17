@@ -17,6 +17,8 @@ IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'StudentDocumentPol
     DROP SECURITY POLICY sec.StudentDocumentPolicy;
 IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'StudentStatusHistoryPolicy' AND schema_id = SCHEMA_ID(N'sec'))
     DROP SECURITY POLICY sec.StudentStatusHistoryPolicy;
+IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'StudentRequestPolicy' AND schema_id = SCHEMA_ID(N'sec'))
+    DROP SECURITY POLICY sec.StudentRequestPolicy;
 GO
 
 -- Bảng tra cứu FacultyId của StudentId (tránh vòng lặp RLS giữa Students <-> Enrollments)
@@ -282,5 +284,12 @@ CREATE SECURITY POLICY sec.StudentStatusHistoryPolicy
     ADD FILTER PREDICATE sec.fn_rls_StudentChild(StudentId) ON edu.StudentStatusHistory,
     ADD BLOCK  PREDICATE sec.fn_rls_StudentChild(StudentId) ON edu.StudentStatusHistory AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_rls_StudentChild(StudentId) ON edu.StudentStatusHistory AFTER UPDATE
+WITH (STATE = ON, SCHEMABINDING = ON);
+GO
+
+CREATE SECURITY POLICY sec.StudentRequestPolicy
+    ADD FILTER PREDICATE sec.fn_rls_StudentChild(StudentId) ON edu.StudentRequests,
+    ADD BLOCK  PREDICATE sec.fn_rls_StudentChild(StudentId) ON edu.StudentRequests AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_rls_StudentChild(StudentId) ON edu.StudentRequests AFTER UPDATE
 WITH (STATE = ON, SCHEMABINDING = ON);
 GO

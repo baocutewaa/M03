@@ -1,0 +1,15 @@
+@{
+    ViewData["Title"] = "Lab: Error Handling";
+    var safeMode = (bool)(ViewBag.SafeMode ?? true);
+}
+
+<h3 class="mt-3 mb-3">Lab 3: So sánh thông báo lỗi (Tình huống 23)</h3>
+
+<div class="mb-3">
+    <a asp-action="Errors" asp-route-safe="true" class="btn btn-success btn-sm">Chế độ an toàn (CorrelationId)</a>
+    <a asp-action="Errors" asp-route-safe="false" class="btn btn-warning btn-sm">Chế độ lộ chi tiết nội bộ</a>
+</div>
+
+<div class="alert @(safeMode ? "alert-info" : "alert-danger")">
+    <pre class="mb-0">@ViewBag.Message</pre>
+</div>

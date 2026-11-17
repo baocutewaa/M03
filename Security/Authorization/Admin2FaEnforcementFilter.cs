@@ -24,7 +24,8 @@ public sealed class Admin2FaEnforcementFilter(UserManager<AppUser> userManager) 
                 || path.StartsWith("/Account/Logout", StringComparison.OrdinalIgnoreCase)
                 || path.StartsWith("/Account/AccessDenied", StringComparison.OrdinalIgnoreCase)
                 || path.StartsWith("/Error", StringComparison.OrdinalIgnoreCase)
-                || path.StartsWith("/health", StringComparison.OrdinalIgnoreCase);
+                || path.StartsWith("/health", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("/api", StringComparison.OrdinalIgnoreCase);
 
             if (!isExempt)
             {
