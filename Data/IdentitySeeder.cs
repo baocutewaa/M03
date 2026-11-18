@@ -26,12 +26,26 @@ public static class IdentitySeeder
 
     private static readonly SeedAccount[] DefaultAccounts =
     [
+        // Administrator
         new("admin@sms.local", "admin@sms.local", "Quản trị hệ thống", AppRoles.Administrator),
+        new("admin2@sms.local", "admin2@sms.local", "Quản trị viên vận hành", AppRoles.Administrator),
+        // Staff (theo từng khoa)
         new("staff.cntt@sms.local", "staff.cntt@sms.local", "Giáo vụ Khoa CNTT", AppRoles.Staff, FacultyCode: "CNTT"),
         new("staff.kt@sms.local", "staff.kt@sms.local", "Giáo vụ Khoa Kinh tế", AppRoles.Staff, FacultyCode: "KT"),
+        new("staff.nn@sms.local", "staff.nn@sms.local", "Giáo vụ Khoa Ngoại ngữ", AppRoles.Staff, FacultyCode: "NN"),
+        // Lecturer (đủ giảng viên các khoa)
         new("gv.an@sms.local", "gv.an@sms.local", "Nguyễn Văn An", AppRoles.Lecturer, LecturerCode: "GV001"),
+        new("gv.binh@sms.local", "gv.binh@sms.local", "Trần Thị Bình", AppRoles.Lecturer, LecturerCode: "GV002"),
+        new("gv.chau@sms.local", "gv.chau@sms.local", "Lê Minh Châu", AppRoles.Lecturer, LecturerCode: "GV003"),
+        new("gv.dung@sms.local", "gv.dung@sms.local", "Phạm Thu Dung", AppRoles.Lecturer, LecturerCode: "GV004"),
+        new("gv.huy@sms.local", "gv.huy@sms.local", "Võ Thành Huy", AppRoles.Lecturer, LecturerCode: "GV005"),
+        // Student (đủ sinh viên các khoa)
         new("sv.cntt01@sms.local", "sv.cntt01@sms.local", "Phạm Minh Hoàng", AppRoles.Student, StudentCode: "2024CNTT001"),
-        new("sv.kt01@sms.local", "sv.kt01@sms.local", "Vũ Hải Nam", AppRoles.Student, StudentCode: "2024KT001")
+        new("sv.cntt02@sms.local", "sv.cntt02@sms.local", "Nguyễn Thảo Vy", AppRoles.Student, StudentCode: "2024CNTT002"),
+        new("sv.kt01@sms.local", "sv.kt01@sms.local", "Vũ Hải Nam", AppRoles.Student, StudentCode: "2024KT001"),
+        new("sv.kt02@sms.local", "sv.kt02@sms.local", "Bùi Thanh Mai", AppRoles.Student, StudentCode: "2024KT002"),
+        new("sv.nn01@sms.local", "sv.nn01@sms.local", "Trần Thu Hà", AppRoles.Student, StudentCode: "2024NN001"),
+        new("sv.nn02@sms.local", "sv.nn02@sms.local", "Nguyễn Đức Minh", AppRoles.Student, StudentCode: "2024NN002")
     ];
 
     [SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "CommandText is a compile-time constant stored procedure name.")]

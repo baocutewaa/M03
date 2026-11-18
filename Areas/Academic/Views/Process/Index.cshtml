@@ -1,13 +1,13 @@
 @{
     ViewData["Title"] = "Quá trình học tập";
+    ViewData["PageTitle"] = "Quản lý quá trình học tập & Phúc khảo";
+    ViewData["PageSubtitle"] = "Cảnh báo học vụ, đơn phúc khảo điểm, khen thưởng kỷ luật và xét tốt nghiệp";
     var semesters = ViewBag.Semesters as IReadOnlyList<SemesterViewRow> ?? [];
     var warnings = ViewBag.Warnings as List<AcademicWarningViewRow> ?? [];
     var appeals = ViewBag.Appeals as IReadOnlyList<GradeAppealViewRow> ?? [];
     var drs = ViewBag.DisciplineRewards as List<DisciplineRewardViewRow> ?? [];
     var graduation = ViewBag.Graduation as List<GraduationCandidateViewRow> ?? [];
 }
-
-<h3 class="mt-3 mb-3">Quản lý quá trình học tập (M6) &amp; Phúc khảo</h3>
 
 @if (TempData["StatusMessage"] is string ok) { <div class="alert alert-success">@ok</div> }
 @if (TempData["ErrorMessage"] is string err) { <div class="alert alert-danger">@err</div> }

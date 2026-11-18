@@ -27,6 +27,9 @@ public sealed class EnvironmentBaselineTests
         var loginResponse = await client.GetAsync("/Account/Login");
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
 
+        var cssResponse = await client.GetAsync("/css/site.css");
+        Assert.Equal(HttpStatusCode.OK, cssResponse.StatusCode);
+
         var homeResponse = await client.GetAsync("/");
         Assert.Equal(HttpStatusCode.Redirect, homeResponse.StatusCode);
         Assert.Contains("/Account/Login", homeResponse.Headers.Location?.ToString(), StringComparison.OrdinalIgnoreCase);

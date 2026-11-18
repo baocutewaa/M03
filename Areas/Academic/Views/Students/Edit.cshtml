@@ -1,13 +1,13 @@
 @model StudentEditInput
 @{
     ViewData["Title"] = $"Sửa hồ sơ {Model.StudentCode}";
+    ViewData["PageTitle"] = $"Cập nhật hồ sơ · {Model.StudentCode}";
+    ViewData["PageSubtitle"] = "Chỉnh sửa thông tin học tập với kiểm soát tương tranh RowVersion";
     var faculties = ViewBag.Faculties as IReadOnlyList<FacultyViewRow> ?? [];
     var majors = ViewBag.Majors as IReadOnlyList<MajorViewRow> ?? [];
     var cohorts = ViewBag.Cohorts as IReadOnlyList<CohortViewRow> ?? [];
     var classes = ViewBag.Classes as IReadOnlyList<AdminClassViewRow> ?? [];
 }
-
-<h3 class="mt-3 mb-3">Cập nhật hồ sơ sinh viên: @Model.StudentCode</h3>
 
 <form asp-action="Edit" asp-route-id="@Model.PublicId" method="post" class="card card-body">
     <input type="hidden" asp-for="PublicId" />

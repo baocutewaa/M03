@@ -15,4 +15,5 @@ public static class SmsClaimTypes
     public const string LecturerId = "lecturer_id";
     public const string FacultyScope = "faculty_scope";
     public const string IssuedAt = "issued_at";
+    public const string FullName = "full_name";
 }

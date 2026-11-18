@@ -216,4 +216,29 @@ public sealed class Phase4AcademicProcessTests
             Assert.Equal(HttpStatusCode.OK, processResp.StatusCode);
         }
     }
+
+    [Theory]
+    [InlineData("staff.cntt@sms.local", "Sinh viên khoa", "2024KT001")]
+    [InlineData("gv.an@sms.local", "Lớp giảng dạy", "2024KT001")]
+    [InlineData("sv.cntt01@sms.local", "Tiến độ CTĐT", "2024KT001")]
+    public async Task RoleDashboards_LoadWithScopedMetricsAndStrictCspMarkup(
+        string userName,
+        string expectedSectionText,
+        string forbiddenCrossTenantCode)
+    {
+        await using var factory = CreateFactory();
+        using var client = CreateHttpsClient(factory);
+        await LoginAsAsync(client, factory.Services, userName);
+
+        var resp = await client.GetAsync("/");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+
+        var html = WebUtility.HtmlDecode(await resp.Content.ReadAsStringAsync());
+        Assert.Contains("sms-kpi-grid", html, StringComparison.Ordinal);
+        Assert.Contains("sms-charts-grid", html, StringComparison.Ordinal);
+        Assert.Contains("sms-donut-svg", html, StringComparison.Ordinal);
+        Assert.Contains(expectedSectionText, html, StringComparison.Ordinal);
+        Assert.DoesNotContain(forbiddenCrossTenantCode, html, StringComparison.Ordinal);
+        Assert.DoesNotContain(" style=", html, StringComparison.OrdinalIgnoreCase);
+    }
 }

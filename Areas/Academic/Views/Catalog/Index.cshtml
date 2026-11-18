@@ -1,9 +1,9 @@
 @model CatalogIndexViewModel
 @{
     ViewData["Title"] = "Danh mục đào tạo";
+    ViewData["PageTitle"] = "Quản lý danh mục đào tạo";
+    ViewData["PageSubtitle"] = "Khoa, ngành, khóa học, lớp sinh hoạt, môn học và chương trình khung (Cache 10 phút)";
 }
-
-<h3 class="mt-3 mb-3">Quản lý danh mục đào tạo (có Cache 10 phút)</h3>
 
 @if (TempData["StatusMessage"] is string ok)
 {

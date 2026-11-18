@@ -1,21 +1,15 @@
 @model IReadOnlyList<StudentDocumentViewRow>
 @{
     ViewData["Title"] = "Tài liệu & minh chứng";
+    ViewData["PageTitle"] = "Tài liệu & ảnh hồ sơ sinh viên";
+    ViewData["PageSubtitle"] = "Tải lên và quản lý minh chứng học tập an toàn theo kiểm tra định dạng";
 }
 
-<h3 class="mt-3 mb-3">Tài liệu &amp; ảnh hồ sơ sinh viên</h3>
-
-@if (TempData["StatusMessage"] is string ok)
-{
-    <div class="alert alert-success">@ok</div>
-}
-@if (TempData["ErrorMessage"] is string err)
-{
-    <div class="alert alert-danger">@err</div>
-}
+@if (TempData["StatusMessage"] is string ok) { <div class="alert alert-success">@ok</div> }
+@if (TempData["ErrorMessage"] is string err) { <div class="alert alert-danger">@err</div> }
 
 <div class="card mb-4">
-    <div class="card-header fw-bold">Tải tệp lên (.jpg, .png, .pdf - tối đa 2MB ảnh / 5MB PDF)</div>
+    <div class="card-header">Tải tệp lên (.jpg, .png, .pdf - tối đa 2MB ảnh / 5MB PDF)</div>
     <div class="card-body">
         <form asp-action="Upload" method="post" enctype="multipart/form-data" class="row g-3">
             <div class="col-md-3">
@@ -41,32 +35,39 @@
     </div>
 </div>
 
-<table class="table table-bordered table-sm">
-    <thead>
-        <tr>
-            <th>Loại</th>
-            <th>Tên tệp</th>
-            <th>Định dạng</th>
-            <th>Kích thước</th>
-            <th>Ngày tải</th>
-            <th>Tải về</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var doc in Model)
-        {
-            <tr>
-                <td>@doc.DocType</td>
-                <td>@doc.OriginalFileName</td>
-                <td>@doc.ContentType</td>
-                <td>@(doc.SizeBytes / 1024) KB</td>
-                <td>@doc.UploadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                <td>
-                    <a asp-area="" asp-controller="Documents" asp-action="Download" asp-route-id="@doc.PublicId" class="btn btn-sm btn-outline-primary">
-                        Tải xuống
-                    </a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="card">
+    <div class="card-header">Tài liệu đã lưu (@Model.Count)</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Loại</th>
+                        <th>Tên tệp</th>
+                        <th>Định dạng</th>
+                        <th>Kích thước</th>
+                        <th>Ngày tải</th>
+                        <th>Tải về</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var doc in Model)
+                    {
+                        <tr>
+                            <td><span class="badge-soft-blue">@doc.DocType</span></td>
+                            <td class="fw-semibold">@doc.OriginalFileName</td>
+                            <td><code>@doc.ContentType</code></td>
+                            <td class="tabular-nums">@(doc.SizeBytes / 1024) KB</td>
+                            <td class="tabular-nums">@doc.UploadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>
+                                <a asp-area="" asp-controller="Documents" asp-action="Download" asp-route-id="@doc.PublicId" class="btn btn-sm btn-outline-primary">
+                                    Tải xuống
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,13 +1,23 @@
 @model M03_Opus.Models.Account.EnableAuthenticatorViewModel
 @{
-    ViewData["Title"] = "Thiết lập xác thực 2 lớp (TOTP)";
+    ViewData["Title"] = "Xác thực 2 lớp (TOTP)";
+    ViewData["PageTitle"] = "Thiết lập xác thực 2 lớp (TOTP)";
+    ViewData["PageSubtitle"] = "Bảo vệ tài khoản bằng mã OTP động chuẩn TOTP";
 }
 
-<div class="row justify-content-center mt-4">
-    <div class="col-md-7">
-        <div class="card shadow-sm">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0">Thiết lập xác thực 2 lớp (TOTP)</h5>
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span>Cấu hình Authenticator</span>
+                @if (Model.IsTwoFactorEnabled)
+                {
+                    <span class="badge-soft-emerald">Đã kích hoạt</span>
+                }
+                else
+                {
+                    <span class="badge-soft-amber">Chưa kích hoạt</span>
+                }
             </div>
             <div class="card-body">
                 @if (Model.IsTwoFactorEnabled)
@@ -21,19 +31,19 @@
                     </div>
                 }
 
-                <p>Nhập khóa bí mật sau vào ứng dụng Authenticator (Microsoft / Google Authenticator):</p>
-                <div class="p-3 bg-light border rounded mb-3">
+                <p class="mb-2">Nhập khóa bí mật sau vào ứng dụng Authenticator (Microsoft / Google Authenticator):</p>
+                <div class="p-3 bg-light border rounded-3 mb-3">
                     <code class="fs-5">@Model.SharedKey</code>
                 </div>
-                <p class="small text-muted">URI cấu hình: <code>@Model.ProvisioningOtpAuth</code></p>
+                <p class="small text-muted mb-4">URI cấu hình: <code>@Model.ProvisioningOtpAuth</code></p>
 
                 <form asp-action="EnableAuthenticator" method="post">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
                     <div class="mb-3">
-                        <label asp-for="Code" class="form-label"></label>
-                        <input asp-for="Code" class="form-control" autocomplete="one-time-code" />
-                        <span asp-validation-for="Code" class="text-danger"></span>
+                        <label asp-for="Code" class="form-label fw-semibold"></label>
+                        <input asp-for="Code" class="form-control" autocomplete="one-time-code" placeholder="Nhập mã 6 chữ số..." />
+                        <span asp-validation-for="Code" class="text-danger small"></span>
                     </div>
 
                     <button type="submit" class="btn btn-primary">Xác nhận và kích hoạt 2FA</button>

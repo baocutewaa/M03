@@ -1,9 +1,9 @@
 @model SectionDetailViewModel
 @{
     ViewData["Title"] = $"Lớp {Model.Section.SectionCode}";
+    ViewData["PageTitle"] = $"Lớp học phần: {Model.Section.SectionCode}";
+    ViewData["PageSubtitle"] = $"{Model.Section.CourseName} · Học kỳ {Model.Section.SemesterCode}";
 }
-
-<h3 class="mt-3 mb-3">Lớp học phần: @Model.Section.SectionCode (@Model.Section.CourseName)</h3>
 
 @if (TempData["StatusMessage"] is string ok) { <div class="alert alert-success">@ok</div> }
 @if (TempData["ErrorMessage"] is string err) { <div class="alert alert-danger">@err</div> }

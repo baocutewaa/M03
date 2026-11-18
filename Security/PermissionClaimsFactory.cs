@@ -36,6 +36,11 @@ public sealed class PermissionClaimsFactory(
             SmsClaimTypes.IssuedAt,
             DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
 
+        if (!string.IsNullOrWhiteSpace(user.FullName))
+        {
+            identity.AddClaim(new Claim(SmsClaimTypes.FullName, user.FullName));
+        }
+
         var conn = authDb.Database.GetDbConnection();
         var shouldClose = conn.State != ConnectionState.Open;
         if (shouldClose)

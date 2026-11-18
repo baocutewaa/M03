@@ -1,37 +1,68 @@
 @model IReadOnlyList<AdminUserSummaryRow>
 @{
     ViewData["Title"] = "Quản trị người dùng";
+    ViewData["PageTitle"] = "Quản lý tài khoản & Phạm vi khoa";
+    ViewData["PageSubtitle"] = "Phân quyền RBAC, trạng thái xác thực 2FA và giới hạn phạm vi dữ liệu";
 }
 
-<div class="d-flex justify-content-between align-items-center mt-3 mb-3">
-    <h3>Quản lý tài khoản &amp; phạm vi khoa (F9.1 - F9.3)</h3>
-    <a asp-controller="Monitoring" asp-action="Index" class="btn btn-outline-primary">Bảng giám sát &amp; Nhật ký</a>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <span class="badge-soft-blue">Tổng tài khoản: @Model.Count</span>
+    <a asp-controller="Monitoring" asp-action="Index" class="btn btn-outline-primary btn-sm">Bảng giám sát &amp; Nhật ký</a>
 </div>
 
-<table class="table table-bordered table-sm align-middle">
-    <thead class="table-light">
-        <tr>
-            <th>Tài khoản</th>
-            <th>Họ tên</th>
-            <th>Vai trò</th>
-            <th>Phạm vi khoa</th>
-            <th>2FA</th>
-            <th>Trạng thái</th>
-            <th>Lỗi ĐN</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var u in Model)
-        {
-            <tr>
-                <td>@u.UserName</td>
-                <td>@u.FullName</td>
-                <td>@u.Roles</td>
-                <td>@u.FacultyScope</td>
-                <td>@(u.TwoFactorEnabled ? "Bật" : "Tắt")</td>
-                <td>@(!u.IsActive ? "Vô hiệu" : (u.LockoutEnd > DateTimeOffset.UtcNow ? "Đang khóa" : "Hoạt động"))</td>
-                <td>@u.AccessFailedCount</td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Tài khoản</th>
+                        <th>Họ tên</th>
+                        <th>Vai trò</th>
+                        <th>Phạm vi khoa</th>
+                        <th>2FA</th>
+                        <th>Trạng thái</th>
+                        <th>Lỗi ĐN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        var isLocked = u.LockoutEnd > DateTimeOffset.UtcNow;
+                        <tr>
+                            <td class="fw-semibold">@u.UserName</td>
+                            <td>@u.FullName</td>
+                            <td><span class="badge-soft-blue">@u.Roles</span></td>
+                            <td>@u.FacultyScope</td>
+                            <td>
+                                @if (u.TwoFactorEnabled)
+                                {
+                                    <span class="badge-soft-emerald">Bật</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-soft-amber">Tắt</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!u.IsActive)
+                                {
+                                    <span class="badge-soft-rose">Vô hiệu</span>
+                                }
+                                else if (isLocked)
+                                {
+                                    <span class="badge-soft-amber">Đang khóa</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-soft-emerald">Hoạt động</span>
+                                }
+                            </td>
+                            <td class="tabular-nums">@u.AccessFailedCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

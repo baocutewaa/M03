@@ -1,13 +1,15 @@
 @model StudentListPageViewModel
 @{
     ViewData["Title"] = "Danh sách sinh viên";
+    ViewData["PageTitle"] = "Quản lý hồ sơ sinh viên";
+    ViewData["PageSubtitle"] = "Tra cứu, lọc theo khoa/ngành/khóa và quản lý hồ sơ học tập";
 }
 
-<div class="d-flex justify-content-between align-items-center mt-3 mb-3">
-    <h3>Quản lý hồ sơ sinh viên</h3>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <p class="text-muted small mb-0">Tìm thấy <strong>@Model.TotalCount</strong> sinh viên (trang @Model.EffectivePage / @Math.Max(1, Model.TotalPages), tối đa @Model.EffectivePageSize dòng/trang).</p>
     @if (User.HasClaim("perm", "Student.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary">Thêm sinh viên</a>
+        <a asp-area="Academic" asp-controller="Students" asp-action="Create" class="btn btn-primary btn-sm px-3">+ Thêm sinh viên</a>
     }
 </div>
 
@@ -57,46 +59,59 @@
             </select>
         </div>
         <div class="col-md-1">
-            <button type="submit" class="btn btn-sm btn-secondary w-100">Lọc</button>
+            <button type="submit" class="btn btn-sm btn-primary w-100">Lọc</button>
         </div>
     </div>
 </form>
 
-<p class="text-muted small">Tìm thấy <strong>@Model.TotalCount</strong> sinh viên (trang @Model.EffectivePage / @Math.Max(1, Model.TotalPages), tối đa @Model.EffectivePageSize dòng/trang).</p>
-
-<table class="table table-bordered table-hover table-sm">
-    <thead class="table-light">
-        <tr>
-            <th>MSSV</th>
-            <th>Họ và tên</th>
-            <th>Khoa</th>
-            <th>Ngành</th>
-            <th>Lớp</th>
-            <th>GPA</th>
-            <th>Trạng thái</th>
-            <th>Thao tác</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var s in Model.Items)
-        {
-            <tr>
-                <td>@s.StudentCode</td>
-                <td>@s.FullName</td>
-                <td>@s.FacultyName</td>
-                <td>@s.MajorName</td>
-                <td>@s.ClassCode</td>
-                <td>@s.CumulativeGpa.ToString("0.00")</td>
-                <td>@s.Status.ToDisplayText()</td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@s.PublicId" class="btn btn-xs btn-outline-primary btn-sm">Chi tiết</a>
-                    @if (User.HasClaim("perm", "Student.Edit"))
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>MSSV</th>
+                        <th>Họ và tên</th>
+                        <th>Khoa</th>
+                        <th>Ngành</th>
+                        <th>Lớp</th>
+                        <th>GPA</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Items)
                     {
-                        <a asp-action="Edit" asp-route-id="@s.PublicId" class="btn btn-xs btn-outline-secondary btn-sm">Sửa</a>
+                        var statusCls = s.Status switch
+                        {
+                            1 => "badge-soft-emerald",
+                            6 => "badge-soft-blue",
+                            2 => "badge-soft-amber",
+                            _ => "badge-soft-rose"
+                        };
+                        <tr>
+                            <td class="fw-semibold tabular-nums">@s.StudentCode</td>
+                            <td class="fw-semibold">@s.FullName</td>
+                            <td>@s.FacultyName</td>
+                            <td>@s.MajorName</td>
+                            <td>@s.ClassCode</td>
+                            <td class="tabular-nums">@s.CumulativeGpa.ToString("0.00")</td>
+                            <td><span class="@statusCls">@s.Status.ToDisplayText()</span></td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <a asp-action="Details" asp-route-id="@s.PublicId" class="btn btn-outline-primary btn-sm">Chi tiết</a>
+                                    @if (User.HasClaim("perm", "Student.Edit"))
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@s.PublicId" class="btn btn-outline-secondary btn-sm">Sửa</a>
+                                    }
+                                    <a asp-action="History" asp-route-id="@s.PublicId" class="btn btn-outline-info btn-sm">Lịch sử</a>
+                                </div>
+                            </td>
+                        </tr>
                     }
-                    <a asp-action="History" asp-route-id="@s.PublicId" class="btn btn-xs btn-outline-info btn-sm">Lịch sử</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

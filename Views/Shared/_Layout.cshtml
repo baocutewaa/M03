@@ -1,158 +1,421 @@
-﻿<!DOCTYPE html>
+﻿@using System.Globalization
+@using M03_Opus.Domain.Enums
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnv
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    var isAuth = User.Identity?.IsAuthenticated == true;
+    var curArea = (ViewContext.RouteData.Values["area"] as string) ?? string.Empty;
+    var curCtrl = (ViewContext.RouteData.Values["controller"] as string) ?? string.Empty;
+    var curAct = (ViewContext.RouteData.Values["action"] as string) ?? string.Empty;
+
+    bool IsActive(string area, string controller, string? action = null) =>
+        string.Equals(curArea, area, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(curCtrl, controller, StringComparison.OrdinalIgnoreCase)
+        && (action is null || string.Equals(curAct, action, StringComparison.OrdinalIgnoreCase));
+
+    string NavClass(string area, string controller, string? action = null) =>
+        IsActive(area, controller, action) ? "sms-nav-link active" : "sms-nav-link";
+
+    var displayName = User.FindFirst(SmsClaimTypes.FullName)?.Value;
+    if (string.IsNullOrWhiteSpace(displayName))
+    {
+        displayName = User.Identity?.Name ?? "Người dùng";
+    }
+
+    var roleLabel = User.IsInRole(AppRoles.Administrator) ? "Quản trị viên"
+        : User.IsInRole(AppRoles.Staff) ? "Giáo vụ Khoa"
+        : User.IsInRole(AppRoles.Lecturer) ? "Giảng viên"
+        : User.IsInRole(AppRoles.Student) ? "Sinh viên"
+        : "Thành viên";
+
+    var nameParts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var initials = nameParts.Length >= 2
+        ? $"{char.ToUpperInvariant(nameParts[0][0])}{char.ToUpperInvariant(nameParts[^1][0])}"
+        : (displayName.Length >= 2 ? displayName[..2].ToUpperInvariant() : "SM");
+
+    var viCulture = CultureInfo.GetCultureInfo("vi-VN");
+    var todayText = DateTime.Now.ToString("dddd, dd/MM/yyyy", viCulture);
+    todayText = char.ToUpper(todayText[0], viCulture) + todayText[1..];
+    var showLab = WebHostEnv.IsDevelopment() && Configuration.GetValue<bool>("Lab:Enabled");
+}
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Hệ thống Quản lý Sinh viên (SMS)</title>
+    <title>@ViewData["Title"] - EduSMS · Hệ thống Quản lý Sinh viên</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/M03_Opus.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">SMS - M03</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+@if (isAuth)
+{
+    <div class="sms-shell">
+        <div id="smsSidebarBackdrop" class="sms-sidebar-backdrop"></div>
+
+        <aside id="smsSidebar" class="sms-sidebar" aria-label="Điều hướng chính">
+            <a class="sms-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                <span class="sms-brand-mark" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                </span>
+                <span class="sms-brand-text">
+                    <span class="sms-brand-name">EduSMS</span>
+                    <span class="sms-brand-sub">Quản lý Đào tạo · M03</span>
+                </span>
+            </a>
+
+            <div class="sms-profile-box">
+                <button type="button" id="profileMenuToggle" class="sms-profile-trigger" aria-expanded="false" aria-controls="profileMenu">
+                    <span class="sms-avatar">@initials</span>
+                    <span class="sms-profile-meta">
+                        <span class="sms-profile-name d-block">@displayName</span>
+                        <span class="sms-profile-role d-block">@roleLabel</span>
+                    </span>
+                    <svg class="sms-profile-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
-                            </li>
-                            @if (User.HasClaim("perm", "User.Manage"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Admin" asp-controller="Users" asp-action="Index">Quản trị</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Audit.View") && User.IsInRole("Administrator"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Admin" asp-controller="Monitoring" asp-action="Index">Giám sát &amp; Log</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Student.View") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Students" asp-action="Index">Sinh viên</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Catalog.Manage") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Catalog" asp-action="Index">Danh mục</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Section.Manage") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Sections" asp-action="Index">Lớp học phần</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Process" asp-action="Index">Quá trình học</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Request.Resolve") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Requests" asp-action="Index">Yêu cầu SV</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Announcement.Manage") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Announcements" asp-action="Index">Thông báo</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Report.View") && (User.IsInRole("Administrator") || User.IsInRole("Staff")))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Academic" asp-controller="Reports" asp-action="Index">Báo cáo</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Section.ViewOwn") && User.IsInRole("Lecturer"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Teaching" asp-controller="MySections" asp-action="Index">Lớp giảng dạy</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Teaching" asp-controller="AdvisorClass" asp-action="Index">Lớp cố vấn</a>
-                                </li>
-                            }
-                            @if (User.HasClaim("perm", "Grade.ViewOwn") && User.IsInRole("Student"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Profile" asp-action="Index">Hồ sơ SV</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Registration" asp-action="Index">Đăng ký HP</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Transcript" asp-action="Index">Bảng điểm</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="Portal" asp-controller="Progress" asp-action="Index">Tiến độ CTĐT</a>
-                                </li>
-                                @if (User.HasClaim("perm", "Document.DownloadOwn"))
-                                {
-                                    <li class="nav-item">
-                                        <a class="nav-link text-dark" asp-area="Portal" asp-controller="Documents" asp-action="Index">Tài liệu</a>
-                                    </li>
-                                }
-                                @if (User.HasClaim("perm", "Request.Submit"))
-                                {
-                                    <li class="nav-item">
-                                        <a class="nav-link text-dark" asp-area="Portal" asp-controller="Requests" asp-action="Index">Yêu cầu &amp; TB</a>
-                                    </li>
-                                }
-                            }
-                        }
-                    </ul>
-                    <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="EnableAuthenticator">2FA</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="LoginHistory">Lịch sử ĐN</a>
-                            </li>
-                            <li class="nav-item">
-                                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                    <button type="submit" class="btn btn-link nav-link text-dark">Đăng xuất (@User.Identity.Name)</button>
-                                </form>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Login">Đăng nhập</a>
-                            </li>
-                        }
-                    </ul>
+                <div id="profileMenu" class="sms-profile-menu" role="menu">
+                    <a class="sms-profile-menu-item" asp-area="" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a>
+                    <a class="sms-profile-menu-item" asp-area="" asp-controller="Account" asp-action="EnableAuthenticator">Xác thực 2 lớp (2FA)</a>
+                    <a class="sms-profile-menu-item" asp-area="" asp-controller="Account" asp-action="LoginHistory">Lịch sử đăng nhập</a>
+                    <hr class="my-1" />
+                    <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="sms-profile-menu-item danger">Đăng xuất (@User.Identity?.Name)</button>
+                    </form>
                 </div>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
+
+            <nav class="sms-nav-section">
+                <a class="@NavClass("", "Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                    </svg>
+                    <span>Tổng quan</span>
+                </a>
+
+                @if (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff))
+                {
+                    <div class="sms-nav-label">Đào tạo &amp; Sinh viên</div>
+                }
+
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Student.View") && (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff)))
+                {
+                    <a class="@NavClass("Academic", "Students")" asp-area="Academic" asp-controller="Students" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                        </svg>
+                        <span>Sinh viên</span>
+                    </a>
+                }
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Catalog.Manage") && (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff)))
+                {
+                    <a class="@NavClass("Academic", "Catalog")" asp-area="Academic" asp-controller="Catalog" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                        <span>Danh mục đào tạo</span>
+                    </a>
+                }
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Section.Manage") && (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff)))
+                {
+                    <a class="@NavClass("Academic", "Sections")" asp-area="Academic" asp-controller="Sections" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span>Lớp học phần</span>
+                    </a>
+                    <a class="@NavClass("Academic", "Process")" asp-area="Academic" asp-controller="Process" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                        <span>Quá trình học</span>
+                    </a>
+                }
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Request.Resolve") && (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff)))
+                {
+                    <a class="@NavClass("Academic", "Requests")" asp-area="Academic" asp-controller="Requests" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>Yêu cầu sinh viên</span>
+                    </a>
+                }
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Announcement.Manage") && (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff)))
+                {
+                    <a class="@NavClass("Academic", "Announcements")" asp-area="Academic" asp-controller="Announcements" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span>Thông báo</span>
+                    </a>
+                }
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Report.View") && (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff)))
+                {
+                    <a class="@NavClass("Academic", "Reports")" asp-area="Academic" asp-controller="Reports" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        <span>Báo cáo &amp; Xuất</span>
+                    </a>
+                }
+
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Section.ViewOwn") && User.IsInRole(AppRoles.Lecturer))
+                {
+                    <div class="sms-nav-label">Giảng dạy</div>
+                    <a class="@NavClass("Teaching", "MySections")" asp-area="Teaching" asp-controller="MySections" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        <span>Lớp giảng dạy</span>
+                    </a>
+                    <a class="@NavClass("Teaching", "AdvisorClass")" asp-area="Teaching" asp-controller="AdvisorClass" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>Lớp cố vấn</span>
+                    </a>
+                }
+
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Grade.ViewOwn") && User.IsInRole(AppRoles.Student))
+                {
+                    <div class="sms-nav-label">Cổng Sinh viên</div>
+                    <a class="@NavClass("Portal", "Profile")" asp-area="Portal" asp-controller="Profile" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span>Hồ sơ sinh viên</span>
+                    </a>
+                    <a class="@NavClass("Portal", "Registration")" asp-area="Portal" asp-controller="Registration" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span>Đăng ký học phần</span>
+                    </a>
+                    <a class="@NavClass("Portal", "Transcript")" asp-area="Portal" asp-controller="Transcript" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        <span>Bảng điểm</span>
+                    </a>
+                    <a class="@NavClass("Portal", "Progress")" asp-area="Portal" asp-controller="Progress" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                        <span>Tiến độ CTĐT</span>
+                    </a>
+                    @if (User.HasClaim(SmsClaimTypes.Permission, "Document.DownloadOwn"))
+                    {
+                        <a class="@NavClass("Portal", "Documents")" asp-area="Portal" asp-controller="Documents" asp-action="Index">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>Tài liệu</span>
+                        </a>
+                    }
+                    @if (User.HasClaim(SmsClaimTypes.Permission, "Request.Submit"))
+                    {
+                        <a class="@NavClass("Portal", "Requests")" asp-area="Portal" asp-controller="Requests" asp-action="Index">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>Yêu cầu &amp; Thông báo</span>
+                        </a>
+                    }
+                }
+
+                @if (User.HasClaim(SmsClaimTypes.Permission, "User.Manage") || (User.HasClaim(SmsClaimTypes.Permission, "Audit.View") && User.IsInRole(AppRoles.Administrator)))
+                {
+                    <div class="sms-nav-label">Quản trị hệ thống</div>
+                }
+                @if (User.HasClaim(SmsClaimTypes.Permission, "User.Manage"))
+                {
+                    <a class="@NavClass("Admin", "Users")" asp-area="Admin" asp-controller="Users" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <polyline points="17 11 19 13 23 9"></polyline>
+                        </svg>
+                        <span>Tài khoản &amp; Quyền</span>
+                    </a>
+                }
+                @if (User.HasClaim(SmsClaimTypes.Permission, "Audit.View") && User.IsInRole(AppRoles.Administrator))
+                {
+                    <a class="@NavClass("Admin", "Monitoring")" asp-area="Admin" asp-controller="Monitoring" asp-action="Index">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>Giám sát &amp; Log</span>
+                    </a>
+                }
+            </nav>
+
+            <div class="sms-sidebar-spacer"></div>
+
+            <div class="sms-sidebar-footer">
+                <a class="@NavClass("", "Account", "EnableAuthenticator")" asp-area="" asp-controller="Account" asp-action="EnableAuthenticator">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span>Bảo mật 2FA</span>
+                </a>
+                <a class="@NavClass("", "Account", "LoginHistory")" asp-area="" asp-controller="Account" asp-action="LoginHistory">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>Lịch sử ĐN</span>
+                </a>
+                <a class="@NavClass("", "Account", "ChangePassword")" asp-area="" asp-controller="Account" asp-action="ChangePassword">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.79 1.02 1.44 1.09H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span>Đổi mật khẩu</span>
+                </a>
+                @if (showLab)
+                {
+                    <a class="@NavClass("SecurityLab", "Lab")" href="/SecurityLab/Lab">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 3h6"></path>
+                            <path d="M10 3v6l-5 8a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-8V3"></path>
+                        </svg>
+                        <span>Security Lab (Dev)</span>
+                    </a>
+                }
+                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                    <button type="submit" class="sms-nav-link danger">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>Đăng xuất</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <div class="sms-main">
+            <header class="sms-topbar">
+                <div class="sms-topbar-left">
+                    <button type="button" id="sidebarToggle" class="sms-mobile-toggle" aria-label="Mở menu điều hướng" aria-expanded="false">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <div>
+                        <h1 class="sms-page-title">@(ViewData["PageTitle"] ?? ViewData["Title"] ?? "Hệ thống Quản lý Sinh viên")</h1>
+                        <p class="sms-page-subtitle">@(ViewData["PageSubtitle"] ?? $"{todayText} · {roleLabel}")</p>
+                    </div>
+                </div>
+
+                <div class="sms-topbar-right">
+                    @if (User.HasClaim(SmsClaimTypes.Permission, "Student.View") && (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff)))
+                    {
+                        <form class="sms-search-form" asp-area="Academic" asp-controller="Students" asp-action="Index" method="get">
+                            <span class="sms-search-icon" aria-hidden="true">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </span>
+                            <input type="search" name="Keyword" class="sms-search-input" placeholder="Tìm MSSV hoặc họ tên..." aria-label="Tìm kiếm sinh viên" />
+                        </form>
+                    }
+
+                    @if (User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.Staff))
+                    {
+                        <a class="sms-icon-btn" asp-area="Academic" asp-controller="Announcements" asp-action="Index" title="Thông báo đào tạo" aria-label="Thông báo đào tạo">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                        </a>
+                    }
+                    else if (User.IsInRole(AppRoles.Student))
+                    {
+                        <a class="sms-icon-btn" asp-area="Portal" asp-controller="Requests" asp-action="Index" title="Yêu cầu & Thông báo" aria-label="Yêu cầu và thông báo">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                        </a>
+                    }
+
+                    <span class="sms-scope-chip d-none d-md-inline-flex">
+                        <span class="sms-dot sms-dot-emerald"></span>
+                        <span>@roleLabel</span>
+                    </span>
+                </div>
+            </header>
+
+            <main role="main" class="sms-content">
+                @RenderBody()
+            </main>
+
+            <footer class="sms-footer">
+                <span>&copy; 2026 EduSMS · M03 Student Management System</span>
+                <span>Bảo mật đa tầng · RBAC · RLS · TOTP 2FA</span>
+            </footer>
+        </div>
+    </div>
+}
+else
+{
+    <div class="sms-auth-shell">
+        <main role="main" class="sms-auth-card">
+            <div class="sms-auth-brand">
+                <span class="sms-brand-mark" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                </span>
+                <span class="sms-brand-text">
+                    <span class="sms-brand-name">EduSMS</span>
+                    <span class="sms-brand-sub">Hệ thống Quản lý Sinh viên · M03</span>
+                </span>
+            </div>
             @RenderBody()
         </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - SMS M03
+        <div class="sms-auth-footer">
+            &copy; 2026 EduSMS M03 · Kết nối mã hóa TLS &amp; Kiểm soát truy cập theo vai trò
         </div>
-    </footer>
+    </div>
+}
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

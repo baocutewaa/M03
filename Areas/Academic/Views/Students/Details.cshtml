@@ -1,18 +1,19 @@
 @model StudentDetailDto
 @{
     ViewData["Title"] = $"Hồ sơ {Model.StudentCode}";
+    ViewData["PageTitle"] = $"Hồ sơ sinh viên · {Model.StudentCode}";
+    ViewData["PageSubtitle"] = $"{Model.FullName} · {Model.FacultyName}";
 }
 
-<div class="d-flex justify-content-between align-items-center mt-3 mb-3">
-    <h3>Hồ sơ sinh viên: @Model.StudentCode - @Model.FullName</h3>
-    <div>
+<div class="d-flex justify-content-end align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         @if (User.HasClaim("perm", "Student.Edit"))
         {
-            <a asp-action="Edit" asp-route-id="@Model.PublicId" class="btn btn-secondary">Chỉnh sửa</a>
+            <a asp-action="Edit" asp-route-id="@Model.PublicId" class="btn btn-primary btn-sm">Chỉnh sửa</a>
         }
-        <a asp-action="History" asp-route-id="@Model.PublicId" class="btn btn-info">Lịch sử thay đổi</a>
-        <a asp-controller="Process" asp-action="StatusTimeline" asp-route-id="@Model.PublicId" class="btn btn-outline-dark">Trạng thái học tập</a>
-        <a asp-action="Index" class="btn btn-outline-secondary">Danh sách</a>
+        <a asp-action="History" asp-route-id="@Model.PublicId" class="btn btn-outline-primary btn-sm">Lịch sử thay đổi</a>
+        <a asp-controller="Process" asp-action="StatusTimeline" asp-route-id="@Model.PublicId" class="btn btn-outline-secondary btn-sm">Trạng thái học tập</a>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Danh sách</a>
     </div>
 </div>
 
@@ -66,7 +67,7 @@
 @if (User.HasClaim("perm", "Student.Delete"))
 {
     <div class="mt-4">
-        <form asp-action="Delete" asp-route-id="@Model.PublicId" method="post" class="d-inline">
+        <form asp-area="Academic" asp-controller="Students" asp-action="Delete" asp-route-id="@Model.PublicId" method="post" class="d-inline">
             <button type="submit" class="btn btn-danger">Xóa mềm hồ sơ (chỉ Admin)</button>
         </form>
     </div>

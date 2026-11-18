@@ -56,7 +56,9 @@ builder.Host.UseSerilog((ctx, services, lc) =>
     var logDir = ctx.Configuration["FileStorage:LogPath"] ?? @"C:\SmsData\logs";
     var logFile = Path.Combine(logDir, "sms-.log");
 
-    lc.ReadFrom.Configuration(ctx.Configuration)
+    lc.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+      .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+      .ReadFrom.Configuration(ctx.Configuration)
       .Enrich.FromLogContext()
       .Enrich.With(services.GetRequiredService<SensitiveDataMaskingEnricher>())
       .WriteTo.File(
@@ -89,7 +91,10 @@ builder.Host.UseSerilog((ctx, services, lc) =>
             {
                 TableName = "AppLogs",
                 SchemaName = "log",
-                AutoCreateSqlTable = false
+                AutoCreateSqlTable = false,
+                // Tránh SqlBulkCopy (insert bulk đòi ~14MB memory grant trên bảng có nvarchar(max) + 3 index, dễ gây RESOURCE_SEMAPHORE)
+                UseSqlBulkCopy = false,
+                BatchPostingLimit = 20
             },
             restrictedToMinimumLevel: LogEventLevel.Information,
             columnOptions: columnOptions,
@@ -112,6 +117,7 @@ builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ExportService>();
 builder.Services.AddSingleton<MonitoringMetrics>();
 builder.Services.AddScoped<MonitoringService>();
+builder.Services.AddScoped<DashboardService>();
 
 builder.Services.AddDbContext<AuthDbContext>(o =>
     o.UseSqlServer(smsAppConnection, s =>
@@ -391,9 +397,49 @@ app.UseWhen(
     ctx => HttpMethods.IsGet(ctx.Request.Method)
         && !ctx.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase),
     branch => branch.UseStatusCodePagesWithReExecute("/Error/{0}"));
+app.UseWhen(
+    ctx => !HttpMethods.IsGet(ctx.Request.Method)
+        && !ctx.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
+        && ctx.Request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase),
+    branch => branch.UseStatusCodePages(async statusCtx =>
+    {
+        var http = statusCtx.HttpContext;
+        if (http.Response.StatusCode == StatusCodes.Status400BadRequest && !http.Response.HasStarted)
+        {
+            http.Response.ContentType = "text/html; charset=utf-8";
+            var traceId = System.Net.WebUtility.HtmlEncode(Activity.Current?.Id ?? http.TraceIdentifier);
+            var html = $"""
+                <!DOCTYPE html>
+                <html lang="vi">
+                <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                    <title>Phiên biểu mẫu hết hạn - EduSMS</title>
+                    <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css" />
+                    <link rel="stylesheet" href="/css/site.css" />
+                </head>
+                <body class="sms-auth-body">
+                    <div class="sms-auth-shell">
+                        <div class="sms-auth-card">
+                            <h1 class="sms-auth-title">Yêu cầu không hợp lệ (HTTP 400)</h1>
+                            <p class="sms-auth-subtitle">Phiên biểu mẫu đã hết hạn hoặc trạng thái đăng nhập vừa thay đổi (ví dụ: gửi trùng biểu mẫu hoặc đăng nhập ở tab khác).</p>
+                            <p class="small text-muted mb-3">Mã sự cố: <code>{traceId}</code></p>
+                            <div class="d-grid gap-2">
+                                <a href="/Account/Login" class="btn btn-primary fw-semibold">Tiếp tục / Đăng nhập lại</a>
+                                <a href="/" class="btn btn-outline-secondary">Về trang chủ</a>
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """;
+            await http.Response.WriteAsync(html, http.RequestAborted).ConfigureAwait(false);
+        }
+    }));
 app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<MaintenanceMiddleware>();
+app.UseStaticFiles();
 
 app.UseRouting();
 

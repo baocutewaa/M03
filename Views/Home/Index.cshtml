@@ -1,24 +1,380 @@
-﻿@{
-    ViewData["Title"] = "Trang chủ";
-    var permissions = User.Claims.Where(c => c.Type == "perm").Select(c => c.Value).OrderBy(v => v).ToList();
-}
+﻿@using System.Globalization
+@model M03_Opus.Models.Home.DashboardViewModel
+@{
+    ViewData["Title"] = "Tổng quan";
+    ViewData["PageTitle"] = "Tổng quan hệ thống";
+    ViewData["PageSubtitle"] = $"{Model.CurrentDateLabel} · {Model.CurrentSemesterLabel}";
 
-<div class="mt-3">
-    <h2>Hệ thống Quản lý Sinh viên &amp; Quá trình theo học (SMS)</h2>
-    <p class="text-muted">Xin chào <strong>@User.Identity?.Name</strong>.</p>
+    string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
 
-    @if (TempData["StatusMessage"] is string msg)
+    void RenderAreaSeries(M03_Opus.Models.Home.DashboardAreaSeries series, string gradId, string panelKey, bool hidden)
     {
-        <div class="alert alert-success">@msg</div>
+        <div data-chart-panel="@panelKey" class="@(hidden ? "d-none" : "")">
+            @if (series.Points.Count == 0 || !string.IsNullOrEmpty(series.EmptyNote))
+            {
+                <div class="sms-chart-empty">@(string.IsNullOrEmpty(series.EmptyNote) ? "Chưa có dữ liệu biểu đồ." : series.EmptyNote)</div>
+            }
+            else
+            {
+                var peak = series.Points[series.PeakIndex];
+                var pillW = Math.Max(48.0, series.PeakBadgeText.Length * 7.2 + 18.0);
+                <div class="sms-svg-wrap">
+                    <svg class="sms-chart-svg" viewBox="0 0 540 215" role="img" aria-label="@Model.AreaChart.Title" data-area-svg="1">
+                        <defs>
+                            <linearGradient id="@gradId" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#15805B" stop-opacity="0.22"></stop>
+                                <stop offset="100%" stop-color="#15805B" stop-opacity="0.01"></stop>
+                            </linearGradient>
+                        </defs>
+
+                        @for (var i = 0; i < series.YAxisLabels.Count; i++)
+                        {
+                            var yTick = 178.0 - (i * (134.0 / Math.Max(1, series.YAxisLabels.Count - 1)));
+                            <line class="sms-gridline" x1="52" y1="@F(yTick)" x2="496" y2="@F(yTick)"></line>
+                            @:<text class="sms-axis-text" x="42" y="@F(yTick + 4)" text-anchor="end">@series.YAxisLabels[i]</text>
+                        }
+
+                        <path d="@series.AreaPath" fill="url(#@gradId)"></path>
+                        <path class="sms-area-stroke" d="@series.LinePath"></path>
+
+                        <line class="sms-peak-guide" x1="@F(peak.X)" y1="@F(peak.Y)" x2="@F(peak.X)" y2="178"></line>
+
+                        @foreach (var pt in series.Points)
+                        {
+                            <circle class="sms-chart-node"
+                                    cx="@F(pt.X)"
+                                    cy="@F(pt.Y)"
+                                    r="4.5"></circle>
+                            <circle class="sms-node-hit"
+                                    cx="@F(pt.X)"
+                                    cy="@F(pt.Y)"
+                                    r="15"
+                                    tabindex="0"
+                                    data-cx="@F(pt.X)"
+                                    data-cy="@F(pt.Y)"
+                                    data-value="@pt.ValueText"
+                                    data-label="@pt.TooltipTitle">
+                                <title>@pt.TooltipTitle: @pt.ValueText</title>
+                            </circle>
+                            @:<text class="sms-axis-text" x="@F(pt.X)" y="198" text-anchor="middle">@pt.Label</text>
+                        }
+
+                        <g class="sms-peak-pill" transform="translate(@F(series.PeakBadgeX), @F(series.PeakBadgeY))">
+                            <rect class="sms-peak-pill-bg" x="@F(-pillW / 2.0)" y="0" width="@F(pillW)" height="22" rx="6"></rect>
+                            <text class="sms-peak-pill-text" x="0" y="14.5" text-anchor="middle">@series.PeakBadgeText</text>
+                        </g>
+                    </svg>
+                </div>
+            }
+        </div>
     }
 
-    <div class="card mt-3">
-        <div class="card-header">Quyền được cấp từ CSDL (@permissions.Count)</div>
-        <div class="card-body">
-            @foreach (var perm in permissions)
+    void RenderBarSeries(M03_Opus.Models.Home.DashboardBarSeries series, string panelKey, bool hidden)
+    {
+        <div data-chart-panel="@panelKey" class="@(hidden ? "d-none" : "")">
+            @if (series.Groups.Count == 0)
             {
-                <span class="badge bg-secondary me-1 mb-1">@perm</span>
+                <div class="sms-chart-empty">@(string.IsNullOrEmpty(series.EmptyNote) ? "Chưa có dữ liệu so sánh." : series.EmptyNote)</div>
+            }
+            else
+            {
+                <div class="sms-svg-wrap">
+                    <svg class="sms-chart-svg" viewBox="0 0 540 196" role="img" aria-label="@Model.BarChart.Title" data-bar-svg="1">
+                        @for (var i = 0; i < series.YAxisLabels.Count; i++)
+                        {
+                            var yTick = 168.0 - (i * (150.0 / Math.Max(1, series.YAxisLabels.Count - 1)));
+                            <line class="sms-gridline" x1="44" y1="@F(yTick)" x2="524" y2="@F(yTick)"></line>
+                            @:<text class="sms-axis-text" x="36" y="@F(yTick + 4)" text-anchor="end">@series.YAxisLabels[i]</text>
+                        }
+
+                        @foreach (var grp in series.Groups)
+                        {
+                            var barW = series.Groups.Count >= 5 ? 13.0 : 16.0;
+                            if (grp.PrimaryHeight > 0)
+                            {
+                                <rect class="sms-bar-primary"
+                                      x="@F(grp.PrimaryX)"
+                                      y="@F(grp.PrimaryY)"
+                                      width="@F(barW)"
+                                      height="@F(grp.PrimaryHeight)"
+                                      rx="4"
+                                      data-tip-text="@grp.Label: @grp.PrimaryValueText">
+                                    <title>@grp.FullLabel · @Model.BarChart.LegendPrimary: @grp.PrimaryValueText</title>
+                                </rect>
+                            }
+                            if (grp.SecondaryHeight > 0)
+                            {
+                                <rect class="sms-bar-secondary"
+                                      x="@F(grp.SecondaryX)"
+                                      y="@F(grp.SecondaryY)"
+                                      width="@F(barW)"
+                                      height="@F(grp.SecondaryHeight)"
+                                      rx="4"
+                                      data-tip-text="@grp.Label: @grp.SecondaryValueText">
+                                    <title>@grp.FullLabel · @Model.BarChart.LegendSecondary: @grp.SecondaryValueText</title>
+                                </rect>
+                            }
+                            @:<text class="sms-axis-text" x="@F(grp.LabelX)" y="186" text-anchor="middle">@grp.Label</text>
+                        }
+
+                        <g class="sms-bar-tip d-none" transform="translate(0, 0)">
+                            <rect class="sms-peak-pill-bg sms-bar-tip-bg" x="-40" y="0" width="80" height="22" rx="6"></rect>
+                            <text class="sms-peak-pill-text sms-bar-tip-text" x="0" y="14.5" text-anchor="middle"></text>
+                        </g>
+                    </svg>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (TempData["StatusMessage"] is string msg)
+{
+    <div class="alert alert-success mb-3">@msg</div>
+}
+
+<!-- Row 1: 4 KPI Cards -->
+<section class="sms-kpi-grid" aria-label="Chỉ số tổng hợp">
+    @foreach (var kpi in Model.KpiCards)
+    {
+        <a href="@kpi.Href" class="sms-kpi-card text-decoration-none">
+            <div>
+                <div class="sms-kpi-label">@kpi.Title</div>
+                <div class="sms-kpi-value">@kpi.Value</div>
+                <div class="sms-kpi-sub">@kpi.Subtitle</div>
+            </div>
+            <span class="sms-kpi-arrow tone-@kpi.Tone" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </span>
+        </a>
+    }
+</section>
+
+<!-- Row 2: 2 Analytics Chart Cards -->
+<section class="sms-charts-grid" aria-label="Biểu đồ phân tích">
+    <div class="sms-panel">
+        <div class="sms-panel-head">
+            <h2 class="sms-panel-title">@Model.AreaChart.Title</h2>
+            @if (!string.IsNullOrEmpty(Model.AreaChart.SecondaryFilterLabel) && Model.AreaChart.SecondarySeries is not null)
+            {
+                <select class="sms-filter-pill" data-chart-switch="area" aria-label="Chọn chuỗi dữ liệu">
+                    <option value="primary" selected>@Model.AreaChart.PrimaryFilterLabel</option>
+                    <option value="secondary">@Model.AreaChart.SecondaryFilterLabel</option>
+                </select>
+            }
+            else
+            {
+                <span class="badge-soft-emerald">@Model.AreaChart.PrimaryFilterLabel</span>
+            }
+        </div>
+        @{ RenderAreaSeries(Model.AreaChart.PrimarySeries, "smsAreaGradPrimary", "primary", false); }
+        @if (Model.AreaChart.SecondarySeries is not null)
+        {
+            RenderAreaSeries(Model.AreaChart.SecondarySeries, "smsAreaGradSecondary", "secondary", true);
+        }
+    </div>
+
+    <div class="sms-panel">
+        <div class="sms-panel-head">
+            <h2 class="sms-panel-title">@Model.BarChart.Title</h2>
+            @if (!string.IsNullOrEmpty(Model.BarChart.SecondaryFilterLabel) && Model.BarChart.SecondarySeries is not null)
+            {
+                <select class="sms-filter-pill" data-chart-switch="bar" aria-label="Chọn góc nhìn biểu đồ cột">
+                    <option value="primary"
+                            data-legend-primary="@Model.BarChart.LegendPrimary"
+                            data-legend-secondary="@Model.BarChart.LegendSecondary"
+                            selected>@Model.BarChart.PrimaryFilterLabel</option>
+                    <option value="secondary"
+                            data-legend-primary="@(Model.BarChart.SecondaryLegendPrimary ?? Model.BarChart.LegendPrimary)"
+                            data-legend-secondary="@(Model.BarChart.SecondaryLegendSecondary ?? Model.BarChart.LegendSecondary)">@Model.BarChart.SecondaryFilterLabel</option>
+                </select>
+            }
+            else
+            {
+                <span class="badge-soft-blue">@Model.BarChart.PrimaryFilterLabel</span>
+            }
+        </div>
+        <div class="sms-chart-legend">
+            <span class="sms-legend-item"><span class="sms-dot sms-dot-emerald"></span><span data-legend-slot="primary">@Model.BarChart.LegendPrimary</span></span>
+            <span class="sms-legend-item"><span class="sms-dot sms-dot-blue"></span><span data-legend-slot="secondary">@Model.BarChart.LegendSecondary</span></span>
+        </div>
+        @{ RenderBarSeries(Model.BarChart.PrimarySeries, "primary", false); }
+        @if (Model.BarChart.SecondarySeries is not null)
+        {
+            RenderBarSeries(Model.BarChart.SecondarySeries, "secondary", true);
+        }
+    </div>
+</section>
+
+<!-- Row 3: 3 Rich Detail Widgets -->
+<section class="sms-details-grid" aria-label="Thông tin chi tiết">
+    <!-- Card 1: Announcements -->
+    <div class="sms-panel">
+        <div class="sms-panel-head">
+            <h2 class="sms-panel-title">@Model.AnnouncementsTitle</h2>
+            <a href="@Model.AnnouncementsViewAllHref" class="sms-panel-link">Xem tất cả</a>
+        </div>
+        @if (Model.Announcements.Count == 0)
+        {
+            <div class="sms-chart-empty my-auto">
+                <div>@Model.AnnouncementsEmptyHint</div>
+                @if (User.HasClaim("perm", "Announcement.Manage"))
+                {
+                    <a href="/Academic/Announcements" class="btn btn-sm btn-outline-primary mt-2">Đăng thông báo</a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="sms-feed-list">
+                @foreach (var ann in Model.Announcements)
+                {
+                    <div class="sms-feed-item">
+                        <span class="sms-badge-avatar tone-@ann.Tone">@ann.Initials</span>
+                        <div class="sms-feed-body">
+                            <div class="sms-feed-top">
+                                <div class="sms-feed-title" title="@ann.Title">@ann.Title</div>
+                                <span class="sms-feed-time">@ann.DateLabel</span>
+                            </div>
+                            <div class="sms-feed-meta">@ann.ScopeName</div>
+                            <div class="sms-feed-text">@ann.Excerpt</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Card 2: Donut Breakdown -->
+    <div class="sms-panel">
+        <div class="sms-panel-head">
+            <h2 class="sms-panel-title">@Model.Donut.Title</h2>
+            <a href="@Model.Donut.ActionHref" class="sms-panel-link" title="Xem chi tiết">•••</a>
+        </div>
+
+        <div class="sms-donut-wrap">
+            <svg class="sms-donut-svg" viewBox="0 0 180 180" role="img" aria-label="@Model.Donut.Title">
+                <circle class="sms-donut-track" cx="90" cy="90" r="66"></circle>
+                @foreach (var seg in Model.Donut.Segments)
+                {
+                    if (!seg.DashArray.StartsWith("0 ", StringComparison.Ordinal))
+                    {
+                        <circle class="sms-donut-seg @seg.ColorClass"
+                                cx="90"
+                                cy="90"
+                                r="66"
+                                transform="rotate(-90 90 90)"
+                                stroke-dasharray="@seg.DashArray"
+                                stroke-dashoffset="@seg.DashOffset"></circle>
+                    }
+                }
+                <text class="sms-donut-center-val tabular-nums" x="90" y="88" text-anchor="middle">@Model.Donut.CenterValue</text>
+                <text class="sms-donut-center-lbl" x="90" y="108" text-anchor="middle">@Model.Donut.CenterLabel</text>
+            </svg>
+        </div>
+
+        <div class="sms-donut-legend">
+            @foreach (var seg in Model.Donut.Segments)
+            {
+                <div class="sms-donut-row">
+                    <div class="sms-donut-row-left">
+                        <span class="sms-swatch @seg.ColorClass"></span>
+                        <span>@seg.Label</span>
+                        <span class="sms-donut-pct">@seg.PercentageText</span>
+                    </div>
+                    <span class="sms-donut-count">@seg.CountText</span>
+                </div>
             }
         </div>
     </div>
-</div>
+
+    <!-- Card 3: Activities / Requests / Schedule -->
+    <div class="sms-panel">
+        <div class="sms-panel-head">
+            <h2 class="sms-panel-title">@Model.ActivitiesTitle</h2>
+            <a href="@Model.ActivitiesViewAllHref" class="sms-panel-link">Xem tất cả</a>
+        </div>
+
+        @if (Model.Activities.Count == 0)
+        {
+            <div class="sms-chart-empty my-auto">@Model.ActivitiesEmptyHint</div>
+        }
+        else
+        {
+            <div class="sms-feed-list">
+                @foreach (var act in Model.Activities)
+                {
+                    <a href="@act.Href" class="sms-feed-item text-decoration-none">
+                        <span class="sms-activity-icon" aria-hidden="true">
+                            @if (act.IconKey == "calendar")
+                            {
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            }
+                            else if (act.IconKey == "shield")
+                            {
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                            }
+                            else if (act.IconKey == "appeal")
+                            {
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                            }
+                        </span>
+                        <div class="sms-feed-body">
+                            <div class="sms-feed-top">
+                                <div class="sms-feed-title" title="@act.Title">@act.Title</div>
+                                <span class="sms-feed-time">@act.TimestampLabel</span>
+                            </div>
+                            <div class="sms-activity-tag tone-@act.TagTone">@act.Tag</div>
+                            <div class="sms-feed-text">@act.Description</div>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<!-- Compact Security & Permissions Disclosure -->
+<details class="sms-security-strip">
+    <summary class="sms-security-summary">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge-soft-blue">@Model.RoleBadgeLabel</span>
+            <span class="text-muted small">Phạm vi dữ liệu: <strong>@Model.ScopeLabel</strong></span>
+            @if (Model.TwoFactorEnabled)
+            {
+                <span class="badge-soft-emerald">2FA TOTP: Đã bật</span>
+            }
+            else
+            {
+                <a asp-area="" asp-controller="Account" asp-action="EnableAuthenticator" class="badge-soft-amber">2FA TOTP: Chưa bật (Thiết lập)</a>
+            }
+        </div>
+        <span class="small fw-semibold text-primary">Quyền được cấp từ CSDL (@Model.Permissions.Count) ▾</span>
+    </summary>
+    <div class="sms-perm-pills">
+        @foreach (var perm in Model.Permissions)
+        {
+            <span class="sms-perm-chip">@perm</span>
+        }
+    </div>
+</details>

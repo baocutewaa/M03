@@ -1,10 +1,10 @@
 @model AnnouncementsIndexViewModel
 @{
     ViewData["Title"] = "Quản lý thông báo";
+    ViewData["PageTitle"] = "Quản lý thông báo đào tạo";
+    ViewData["PageSubtitle"] = "Đăng tải và phân phối thông báo toàn trường hoặc theo khoa (HTML Whitelist Sanitizer)";
     var faculties = ViewBag.Faculties as IReadOnlyList<FacultyViewRow> ?? [];
 }
-
-<h3 class="mt-3 mb-3">Quản lý thông báo (HTML Whitelist Sanitizer)</h3>
 
 @if (TempData["StatusMessage"] is string ok)
 {

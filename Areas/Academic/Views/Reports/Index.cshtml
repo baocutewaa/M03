@@ -1,125 +1,136 @@
 @model ReportsIndexViewModel
 @{
     ViewData["Title"] = "Báo cáo & Xuất Excel";
+    ViewData["PageTitle"] = "Báo cáo liên hệ sinh viên & Học vụ";
+    ViewData["PageSubtitle"] = "Tổng hợp liên hệ theo quyền RBAC, cảnh báo học vụ và danh sách xét tốt nghiệp";
 }
 
-<div class="d-flex justify-content-between align-items-center mt-3 mb-3">
-    <h3>Báo cáo liên hệ sinh viên &amp; học vụ</h3>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div class="d-flex gap-2">
-        <a asp-action="FacultyTranscript" class="btn btn-outline-primary">Bảng điểm toàn khoa</a>
-        @if (User.HasClaim("perm", "Report.Export"))
-        {
-            <form asp-action="ExportContacts" method="post">
-                <button type="submit" class="btn btn-success">Xuất Excel (.xlsx)</button>
-            </form>
-        }
+        <a asp-action="FacultyTranscript" class="btn btn-outline-primary btn-sm">Bảng điểm toàn khoa</a>
     </div>
+    @if (User.HasClaim("perm", "Report.Export"))
+    {
+        <form asp-action="ExportContacts" method="post">
+            <button type="submit" class="btn btn-success btn-sm">Xuất Excel (.xlsx)</button>
+        </form>
+    }
 </div>
 
 @if (!Model.CanViewSensitive)
 {
-    <div class="alert alert-info">
+    <div class="alert alert-info mb-3">
         Bạn đang xem báo cáo ở chế độ che dữ liệu nhạy cảm (Email, SĐT) do không có quyền <code>Report.ViewSensitive</code>.
     </div>
 }
 
-<h5 class="mt-3">Danh sách liên hệ sinh viên</h5>
-<table class="table table-bordered table-sm">
-    <thead>
-        <tr>
-            <th>MSSV</th>
-            <th>Họ tên</th>
-            <th>Lớp</th>
-            <th>Khoa</th>
-            <th>Email</th>
-            <th>SĐT</th>
-            @if (Model.CanViewSensitive)
-            {
-                <th>Ngày sinh</th>
-            }
-        </tr>
-    </thead>
-    <tbody>
-        @if (Model.CanViewSensitive)
-        {
-            @foreach (var row in Model.FullContacts)
-            {
-                <tr>
-                    <td>@row.StudentCode</td>
-                    <td>@row.FullName</td>
-                    <td>@row.ClassCode</td>
-                    <td>@row.FacultyName</td>
-                    <td>@row.Email</td>
-                    <td>@row.Phone</td>
-                    <td>@row.DateOfBirth.ToString("yyyy-MM-dd")</td>
-                </tr>
-            }
-        }
-        else
-        {
-            @foreach (var row in Model.MaskedContacts)
-            {
-                <tr>
-                    <td>@row.StudentCode</td>
-                    <td>@row.FullName</td>
-                    <td>@row.ClassCode</td>
-                    <td>@row.FacultyName</td>
-                    <td><code>@row.MaskedEmail</code></td>
-                    <td><code>@row.MaskedPhone</code></td>
-                </tr>
-            }
-        }
-    </tbody>
-</table>
+<div class="card mb-4">
+    <div class="card-header">Danh sách liên hệ sinh viên</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>MSSV</th>
+                        <th>Họ tên</th>
+                        <th>Lớp</th>
+                        <th>Khoa</th>
+                        <th>Email</th>
+                        <th>SĐT</th>
+                        @if (Model.CanViewSensitive)
+                        {
+                            <th>Ngày sinh</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.CanViewSensitive)
+                    {
+                        @foreach (var row in Model.FullContacts)
+                        {
+                            <tr>
+                                <td class="fw-semibold tabular-nums">@row.StudentCode</td>
+                                <td>@row.FullName</td>
+                                <td>@row.ClassCode</td>
+                                <td>@row.FacultyName</td>
+                                <td>@row.Email</td>
+                                <td class="tabular-nums">@row.Phone</td>
+                                <td class="tabular-nums">@row.DateOfBirth.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        @foreach (var row in Model.MaskedContacts)
+                        {
+                            <tr>
+                                <td class="fw-semibold tabular-nums">@row.StudentCode</td>
+                                <td>@row.FullName</td>
+                                <td>@row.ClassCode</td>
+                                <td>@row.FacultyName</td>
+                                <td><code>@row.MaskedEmail</code></td>
+                                <td><code>@row.MaskedPhone</code></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-<h5 class="mt-4">Cảnh báo học vụ (@Model.Warnings.Count)</h5>
-<table class="table table-bordered table-sm">
-    <thead>
-        <tr>
-            <th>Học kỳ</th>
-            <th>MSSV</th>
-            <th>Họ tên</th>
-            <th>Mức</th>
-            <th>GPA HK</th>
-            <th>GPA TL</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var w in Model.Warnings)
-        {
-            <tr>
-                <td>@w.SemesterCode</td>
-                <td>@w.StudentCode</td>
-                <td>@w.FullName</td>
-                <td>Mức @w.Level</td>
-                <td>@w.SemesterGpa.ToString("0.00")</td>
-                <td>@w.CumulativeGpa.ToString("0.00")</td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<h5 class="mt-4">Xét tốt nghiệp (@Model.Graduation.Count)</h5>
-<table class="table table-bordered table-sm">
-    <thead>
-        <tr>
-            <th>MSSV</th>
-            <th>Họ tên</th>
-            <th>Tín chỉ</th>
-            <th>GPA tích lũy</th>
-            <th>Đạt điều kiện</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var g in Model.Graduation)
-        {
-            <tr>
-                <td>@g.StudentCode</td>
-                <td>@g.FullName</td>
-                <td>@g.CumulativeCredits / @g.TotalCreditsRequired</td>
-                <td>@g.CumulativeGpa.ToString("0.00")</td>
-                <td>@(g.IsEligible ? "Đủ điều kiện" : "Chưa đạt")</td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Cảnh báo học vụ (@Model.Warnings.Count)</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr><th>Học kỳ</th><th>MSSV</th><th>Họ tên</th><th>Mức</th><th>GPA HK</th><th>GPA TL</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var w in Model.Warnings)
+                            {
+                                <tr>
+                                    <td>@w.SemesterCode</td>
+                                    <td class="tabular-nums">@w.StudentCode</td>
+                                    <td>@w.FullName</td>
+                                    <td><span class="badge-soft-amber">Mức @w.Level</span></td>
+                                    <td class="tabular-nums">@w.SemesterGpa.ToString("0.00")</td>
+                                    <td class="tabular-nums">@w.CumulativeGpa.ToString("0.00")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Xét tốt nghiệp (@Model.Graduation.Count)</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr><th>MSSV</th><th>Họ tên</th><th>Tín chỉ</th><th>GPA tích lũy</th><th>Đạt điều kiện</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in Model.Graduation)
+                            {
+                                <tr>
+                                    <td class="tabular-nums">@g.StudentCode</td>
+                                    <td>@g.FullName</td>
+                                    <td class="tabular-nums">@g.CumulativeCredits / @g.TotalCreditsRequired</td>
+                                    <td class="tabular-nums">@g.CumulativeGpa.ToString("0.00")</td>
+                                    <td><span class="@(g.IsEligible ? "badge-soft-emerald" : "badge-soft-amber")">@(g.IsEligible ? "Đủ điều kiện" : "Chưa đạt")</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,48 +1,58 @@
 @model IReadOnlyList<M03_Opus.Models.Account.LoginHistoryItemViewModel>
 @{
     ViewData["Title"] = "Lịch sử đăng nhập của tôi";
+    ViewData["PageTitle"] = "Lịch sử đăng nhập";
+    ViewData["PageSubtitle"] = "20 lần đăng nhập gần nhất và cảnh báo truy cập bất thường";
 }
 
-<h3 class="mt-3 mb-3">Lịch sử đăng nhập của tôi</h3>
-
-<table class="table table-bordered table-striped">
-    <thead>
-        <tr>
-            <th>Thời điểm (UTC)</th>
-            <th>Kết quả</th>
-            <th>IP</th>
-            <th>Trình duyệt / Thiết bị</th>
-            <th>Cảnh báo</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            <tr>
-                <td>@item.At.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                <td>
-                    @if (item.Succeeded)
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Nhật ký phiên đăng nhập gần đây</span>
+        <span class="badge-soft-blue">@Model.Count bản ghi</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Thời điểm (UTC)</th>
+                        <th>Kết quả</th>
+                        <th>IP</th>
+                        <th>Trình duyệt / Thiết bị</th>
+                        <th>Cảnh báo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
                     {
-                        <span class="badge bg-success">Thành công</span>
+                        <tr>
+                            <td class="tabular-nums">@item.At.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>
+                                @if (item.Succeeded)
+                                {
+                                    <span class="badge-soft-emerald">Thành công</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-soft-rose">Thất bại (@item.FailureReason)</span>
+                                }
+                            </td>
+                            <td class="tabular-nums">@item.Ip</td>
+                            <td class="text-truncate">@item.UserAgent</td>
+                            <td>
+                                @if (item.IsUnusual)
+                                {
+                                    <span class="badge-soft-amber">Bất thường</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Bình thường</span>
+                                }
+                            </td>
+                        </tr>
                     }
-                    else
-                    {
-                        <span class="badge bg-danger">Thất bại (@item.FailureReason)</span>
-                    }
-                </td>
-                <td>@item.Ip</td>
-                <td class="text-truncate">@item.UserAgent</td>
-                <td>
-                    @if (item.IsUnusual)
-                    {
-                        <span class="badge bg-warning text-dark">Bất thường</span>
-                    }
-                    else
-                    {
-                        <span class="text-muted">Bình thường</span>
-                    }
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
